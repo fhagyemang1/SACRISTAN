@@ -1,0 +1,19 @@
+name: liturgical_calendar
+description: >
+  Pure-Dart, fully offline Roman Catholic liturgical calendar engine —
+  computus (Easter), season/color/rank resolution, Sunday (A/B/C) and
+  weekday (I/II) lectionary cycles, the General Roman Calendar, and
+  merge support for a parish/diocesan local supplementary calendar.
+  Zero Flutter dependency: usable with plain `dart test` / `dart run`.
+version: 1.0.0
+publish_to: "none"
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  meta: ^1.15.0
+
+dev_dependencies:
+  test: ^1.25.0
+  lints: ^4.0.0
