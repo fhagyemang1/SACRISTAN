@@ -117,6 +117,17 @@ migrated `language_screen.dart` to the new pattern. Plus two more
 each "looks done" screenshot has had more waiting above the fold, so
 don't be surprised by a sixth round.
 
+There was a sixth round: down to 5 issues, and this time the full list
+fit on screen. All 5 were the same real concern —
+`use_build_context_synchronously`, using a screen's `BuildContext` after
+an `await` without checking it's still `mounted` first, which can throw
+or silently misbehave if the user navigated away in the meantime. Fixed
+across `inventory_screen.dart` (4 spots) and `admin_pin_screen.dart` (1
+spot, fixed by reordering code so the context read happens before the
+await instead of after). See `docs/ARCHITECTURE.md` §4 (Round 9, sixth
+CI run). If this comes back green, it's the first fully clean
+`app-analyze` run this project has ever had.
+
 Before that, round 8's CI run passed clean on both jobs — the whole app
 compiled with `flutter analyze` and every calendar-engine test passed on
 a real, executed Dart runtime for the first time — but going on to write

@@ -120,9 +120,16 @@ class _AdminPinScreenState extends State<AdminPinScreen> {
                         // unambiguously as "call this literal now" rather
                         // than a bare function-typed value.
                         profile ??= await (() async {
+                          // `context.read` must happen before the `await`
+                          // below, not after — using a `BuildContext`
+                          // across an async gap risks it having been
+                          // unmounted in between (round 9's
+                          // `use_build_context_synchronously` lint).
+                          // `db` doesn't depend on `id`, so hoisting this
+                          // line up is a free fix, not a workaround.
+                          final db = context.read<SacristanDatabase>();
                           final id = await profileRepo.addProfile(
                               'Parish Admin', ProfileRole.admin);
-                          final db = context.read<SacristanDatabase>();
                           return (db.select(db.profiles)
                                 ..where((p) => p.id.equals(id)))
                               .getSingle();

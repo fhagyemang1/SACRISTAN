@@ -118,6 +118,11 @@ class InventoryScreen extends StatelessWidget {
 
   Future<void> _textLowStockAlert(BuildContext context, InventoryRepository repo) async {
     final items = await repo.watchLowStock().first;
+    // Every `await` above this point is a gap where the widget could be
+    // unmounted (screen popped, etc.) before we get back — round 9's
+    // `use_build_context_synchronously` lint requires a `mounted` check
+    // before every subsequent `context` use, not just the first one.
+    if (!context.mounted) return;
     if (items.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Nothing is flagged low-stock right now.')),
@@ -126,6 +131,7 @@ class InventoryScreen extends StatelessWidget {
     }
     final contactRepo = context.read<ContactRepository>();
     final contacts = await contactRepo.watchAll().first;
+    if (!context.mounted) return;
     if (contacts.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text(
@@ -133,7 +139,6 @@ class InventoryScreen extends StatelessWidget {
       );
       return;
     }
-    if (!context.mounted) return;
     final chosen = await showDialog<Contact>(
       context: context,
       builder: (context) => SimpleDialog(
@@ -156,6 +161,7 @@ class InventoryScreen extends StatelessWidget {
 
   Future<void> _exportLowStockCsv(BuildContext context, InventoryRepository repo) async {
     final items = await repo.watchLowStock().first;
+    if (!context.mounted) return;
     if (items.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Nothing is flagged low-stock right now.')),
