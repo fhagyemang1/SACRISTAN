@@ -43,22 +43,34 @@ device/screen-reader pass.
 
 ## Get real compiler feedback today (do this first)
 
-**Update: this has been done, and it passed — then it found a real bug.**
-A user ran this project's CI on GitHub Actions and both jobs came back
-green — the whole app compiles cleanly with `flutter analyze`, and every
-test in the calendar engine's suite passed on a real, executed Dart
-runtime for the first time. That closes the single biggest risk this
-project carried through seven rounds of manual-only review. (An earlier
-version of this workflow briefly added a third job that produced an
-actual runnable Windows `.exe`; it was removed by request, so the two
-analyze/test jobs below are what's current.) But a green `flutter
-analyze` is not the same as a working app: round 8 found that
+**Update: round 9 — CI ran again after round 8's fixes were pushed, and
+this time both jobs failed for real, toolchain-specific reasons.**
+Neither failure was something manual review could have caught; both
+only exist because of the exact SDK/lint versions GitHub's runner
+installed. `app-analyze` failed at `flutter pub get`: `app/pubspec.yaml`
+pinned `intl: ^0.19.0`, but the installed Flutter SDK's
+`flutter_localizations` requires `intl ^0.20.3`, and an app can never
+pin lower than what that framework package demands — fixed by bumping
+the pin. `calendar-engine-tests` failed at `dart analyze` with 33
+`prefer_const_constructors` issues in `general_roman_calendar.dart` —
+a rule this package's own `analysis_options.yaml` explicitly opts into,
+so the fix was adding `const` at 33 call sites, not loosening CI. See
+`docs/ARCHITECTURE.md` §4 (Round 9) for the full detail. **These fixes
+have not been re-verified by CI yet** — push them and re-run to confirm
+green.
+
+Before that, round 8's CI run passed clean on both jobs — the whole app
+compiled with `flutter analyze` and every calendar-engine test passed on
+a real, executed Dart runtime for the first time — but going on to write
+real widget tests surfaced a critical bug analyze couldn't catch:
 `main.dart`'s `MaterialApp` was missing `AppLocalizations.delegate` from
 its localization setup, which would have crashed the app on launch in
-every language — a bug static analysis cannot catch, only running the
-app can. It's fixed now, with a regression test added specifically to
-catch it if it ever comes back — see `docs/ARCHITECTURE.md` §4. The
-walkthrough below is kept for anyone starting fresh from this zip.
+every language. It's fixed, with a regression test added specifically to
+catch it if it ever comes back. (An earlier version of this workflow
+briefly added a third job that produced an actual runnable Windows
+`.exe`; it was removed by request, so the two analyze/test jobs below
+are what's current.) The walkthrough below is kept for anyone starting
+fresh from this zip.
 
 Every round of work on this project before that had been careful manual
 review — this sandbox cannot install the Dart/Flutter SDK, so nothing

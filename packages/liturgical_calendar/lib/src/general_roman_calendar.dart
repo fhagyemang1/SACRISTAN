@@ -19,14 +19,14 @@ const _c = CalendarSource.generalRomanCalendar;
 /// for. This is not the complete ~250-entry universal calendar; extending
 /// it further is purely additive data-entry work (see ARCHITECTURE.md).
 final List<FixedCelebration> generalRomanCalendarFixed = [
-  FixedCelebration(1, 1, const Celebration(
+  const FixedCelebration(1, 1, Celebration(
       key: 'maryMotherOfGod',
       name: 'Mary, Mother of God',
       latinName: 'Sollemnitas Sanctae Dei Genetricis Mariae',
       rank: CelebrationRank.solemnity,
       color: LiturgicalColor.white,
       source: _c)),
-  FixedCelebration(1, 6, const Celebration(
+  const FixedCelebration(1, 6, Celebration(
       key: 'epiphany',
       name: 'The Epiphany of the Lord',
       latinName: 'In Epiphania Domini',
@@ -34,178 +34,178 @@ final List<FixedCelebration> generalRomanCalendarFixed = [
       color: LiturgicalColor.white,
       source: _c,
       goldPermitted: true)),
-  FixedCelebration(1, 17, const Celebration(
+  const FixedCelebration(1, 17, Celebration(
       key: 'stAnthonyAbbot',
       name: 'St. Anthony, Abbot',
       rank: CelebrationRank.memorial,
       color: LiturgicalColor.white,
       source: _c)),
-  FixedCelebration(1, 25, const Celebration(
+  const FixedCelebration(1, 25, Celebration(
       key: 'conversionOfStPaul',
       name: 'The Conversion of St. Paul the Apostle',
       rank: CelebrationRank.feast,
       color: LiturgicalColor.white,
       source: _c)),
-  FixedCelebration(2, 2, const Celebration(
+  const FixedCelebration(2, 2, Celebration(
       key: 'presentationOfTheLord',
       name: 'The Presentation of the Lord',
       latinName: 'In Praesentatione Domini',
       rank: CelebrationRank.feast,
       color: LiturgicalColor.white,
       source: _c)),
-  FixedCelebration(2, 22, const Celebration(
+  const FixedCelebration(2, 22, Celebration(
       key: 'chairOfStPeter',
       name: 'The Chair of St. Peter the Apostle',
       rank: CelebrationRank.feast,
       color: LiturgicalColor.white,
       source: _c)),
-  FixedCelebration(3, 17, const Celebration(
+  const FixedCelebration(3, 17, Celebration(
       key: 'stPatrick',
       name: 'St. Patrick, Bishop',
       rank: CelebrationRank.optionalMemorial,
       color: LiturgicalColor.white,
       source: _c)),
-  FixedCelebration(3, 19, const Celebration(
+  const FixedCelebration(3, 19, Celebration(
       key: 'stJoseph',
       name: 'St. Joseph, Spouse of the Blessed Virgin Mary',
       latinName: 'Sancti Ioseph, Sponsi B.M.V.',
       rank: CelebrationRank.solemnity,
       color: LiturgicalColor.white,
       source: _c)),
-  FixedCelebration(3, 25, const Celebration(
+  const FixedCelebration(3, 25, Celebration(
       key: 'annunciation',
       name: 'The Annunciation of the Lord',
       latinName: 'In Annuntiatione Domini',
       rank: CelebrationRank.solemnity,
       color: LiturgicalColor.white,
       source: _c)),
-  FixedCelebration(4, 25, const Celebration(
+  const FixedCelebration(4, 25, Celebration(
       key: 'stMarkEvangelist',
       name: 'St. Mark, Evangelist',
       rank: CelebrationRank.feast,
       color: LiturgicalColor.red,
       source: _c)),
-  FixedCelebration(5, 1, const Celebration(
+  const FixedCelebration(5, 1, Celebration(
       key: 'stJosephTheWorker',
       name: 'St. Joseph the Worker',
       rank: CelebrationRank.optionalMemorial,
       color: LiturgicalColor.white,
       source: _c)),
-  FixedCelebration(5, 31, const Celebration(
+  const FixedCelebration(5, 31, Celebration(
       key: 'visitation',
       name: 'The Visitation of the Blessed Virgin Mary',
       rank: CelebrationRank.feast,
       color: LiturgicalColor.white,
       source: _c)),
-  FixedCelebration(6, 24, const Celebration(
+  const FixedCelebration(6, 24, Celebration(
       key: 'nativityOfStJohnTheBaptist',
       name: 'The Nativity of St. John the Baptist',
       rank: CelebrationRank.solemnity,
       color: LiturgicalColor.white,
       source: _c)),
-  FixedCelebration(6, 29, const Celebration(
+  const FixedCelebration(6, 29, Celebration(
       key: 'ssPeterAndPaul',
       name: 'Ss. Peter and Paul, Apostles',
       latinName: 'Ss. Petri et Pauli, Apostolorum',
       rank: CelebrationRank.solemnity,
       color: LiturgicalColor.red,
       source: _c)),
-  FixedCelebration(7, 22, const Celebration(
+  const FixedCelebration(7, 22, Celebration(
       key: 'stMaryMagdalene',
       name: 'St. Mary Magdalene',
       rank: CelebrationRank.feast,
       color: LiturgicalColor.white,
       source: _c)),
-  FixedCelebration(7, 25, const Celebration(
+  const FixedCelebration(7, 25, Celebration(
       key: 'stJamesApostle',
       name: 'St. James, Apostle',
       rank: CelebrationRank.feast,
       color: LiturgicalColor.red,
       source: _c)),
-  FixedCelebration(8, 6, const Celebration(
+  const FixedCelebration(8, 6, Celebration(
       key: 'transfiguration',
       name: 'The Transfiguration of the Lord',
       rank: CelebrationRank.feast,
       color: LiturgicalColor.white,
       source: _c)),
-  FixedCelebration(8, 15, const Celebration(
+  const FixedCelebration(8, 15, Celebration(
       key: 'assumption',
       name: 'The Assumption of the Blessed Virgin Mary',
       latinName: 'In Assumptione B.M.V.',
       rank: CelebrationRank.solemnity,
       color: LiturgicalColor.white,
       source: _c)),
-  FixedCelebration(9, 8, const Celebration(
+  const FixedCelebration(9, 8, Celebration(
       key: 'nativityOfMary',
       name: 'The Nativity of the Blessed Virgin Mary',
       rank: CelebrationRank.feast,
       color: LiturgicalColor.white,
       source: _c)),
-  FixedCelebration(9, 14, const Celebration(
+  const FixedCelebration(9, 14, Celebration(
       key: 'exaltationOfTheCross',
       name: 'The Exaltation of the Holy Cross',
       latinName: 'In Exaltatione Sanctae Crucis',
       rank: CelebrationRank.feast,
       color: LiturgicalColor.red,
       source: _c)),
-  FixedCelebration(9, 29, const Celebration(
+  const FixedCelebration(9, 29, Celebration(
       key: 'archangels',
       name: 'Ss. Michael, Gabriel, and Raphael, Archangels',
       rank: CelebrationRank.feast,
       color: LiturgicalColor.white,
       source: _c)),
-  FixedCelebration(10, 4, const Celebration(
+  const FixedCelebration(10, 4, Celebration(
       key: 'stFrancisOfAssisi',
       name: 'St. Francis of Assisi',
       rank: CelebrationRank.memorial,
       color: LiturgicalColor.white,
       source: _c)),
-  FixedCelebration(10, 7, const Celebration(
+  const FixedCelebration(10, 7, Celebration(
       key: 'ourLadyOfTheRosary',
       name: 'Our Lady of the Rosary',
       rank: CelebrationRank.memorial,
       color: LiturgicalColor.white,
       source: _c)),
-  FixedCelebration(11, 1, const Celebration(
+  const FixedCelebration(11, 1, Celebration(
       key: 'allSaints',
       name: 'All Saints',
       latinName: 'Sollemnitas Omnium Sanctorum',
       rank: CelebrationRank.solemnity,
       color: LiturgicalColor.white,
       source: _c)),
-  FixedCelebration(11, 2, const Celebration(
+  const FixedCelebration(11, 2, Celebration(
       key: 'allSouls',
       name: 'The Commemoration of All the Faithful Departed (All Souls)',
       latinName: 'In Commemoratione Omnium Fidelium Defunctorum',
       rank: CelebrationRank.feast,
       color: LiturgicalColor.violet,
       source: _c)),
-  FixedCelebration(11, 9, const Celebration(
+  const FixedCelebration(11, 9, Celebration(
       key: 'dedicationLateran',
       name: 'The Dedication of the Lateran Basilica',
       rank: CelebrationRank.feast,
       color: LiturgicalColor.white,
       source: _c)),
-  FixedCelebration(11, 30, const Celebration(
+  const FixedCelebration(11, 30, Celebration(
       key: 'stAndrewApostle',
       name: 'St. Andrew, Apostle',
       rank: CelebrationRank.feast,
       color: LiturgicalColor.red,
       source: _c)),
-  FixedCelebration(12, 8, const Celebration(
+  const FixedCelebration(12, 8, Celebration(
       key: 'immaculateConception',
       name: 'The Immaculate Conception of the Blessed Virgin Mary',
       latinName: 'In Conceptione Immaculata B.M.V.',
       rank: CelebrationRank.solemnity,
       color: LiturgicalColor.white,
       source: _c)),
-  FixedCelebration(12, 12, const Celebration(
+  const FixedCelebration(12, 12, Celebration(
       key: 'ourLadyOfGuadalupe',
       name: 'Our Lady of Guadalupe',
       rank: CelebrationRank.optionalMemorial,
       color: LiturgicalColor.white,
       source: _c)),
-  FixedCelebration(12, 25, const Celebration(
+  const FixedCelebration(12, 25, Celebration(
       key: 'christmas',
       name: 'The Nativity of the Lord (Christmas)',
       latinName: 'In Nativitate Domini',
@@ -213,19 +213,19 @@ final List<FixedCelebration> generalRomanCalendarFixed = [
       color: LiturgicalColor.white,
       source: _c,
       goldPermitted: true)),
-  FixedCelebration(12, 26, const Celebration(
+  const FixedCelebration(12, 26, Celebration(
       key: 'stStephen',
       name: 'St. Stephen, First Martyr',
       rank: CelebrationRank.feast,
       color: LiturgicalColor.red,
       source: _c)),
-  FixedCelebration(12, 28, const Celebration(
+  const FixedCelebration(12, 28, Celebration(
       key: 'holyInnocents',
       name: 'The Holy Innocents, Martyrs',
       rank: CelebrationRank.feast,
       color: LiturgicalColor.red,
       source: _c)),
-  FixedCelebration(12, 31, const Celebration(
+  const FixedCelebration(12, 31, Celebration(
       key: 'stSylvester',
       name: 'St. Sylvester I, Pope',
       rank: CelebrationRank.optionalMemorial,

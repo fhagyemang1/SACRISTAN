@@ -47,7 +47,14 @@ dependencies:
   share_plus: ^9.0.0
 
   # Icons/formatting
-  intl: ^0.19.0
+  # Pinned to what flutter_localizations (from the Flutter SDK itself)
+  # requires, not chosen freely — round 9's first real CI run failed
+  # "flutter pub get" with a version-solving error because this was
+  # ^0.19.0 while the installed SDK's flutter_localizations demanded
+  # intl ^0.20.3. If a future Flutter upgrade shifts that requirement
+  # again, `flutter pub get`'s own error message names the exact
+  # version to put here — this is not a value to guess at.
+  intl: ^0.20.3
   cupertino_icons: ^1.0.8
 
   # Salted-hash storage for the admin PIN (no plaintext PIN ever stored)
