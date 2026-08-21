@@ -101,6 +101,22 @@ from earlier in this round. See `docs/ARCHITECTURE.md` §4 (Round 9,
 fourth CI run) for the full detail — likely still more to find on the
 next run.
 
+Pushed again, and CI ran a fifth time: down to 11 issues (from 42), and
+this time all of them fit in one screenshot. Only 1 was a real error —
+`SemanticsFlag` undefined in a test file (needed a direct `import
+'dart:ui'`, since this Flutter SDK version doesn't surface it through
+`material.dart` the way it used to) — fixed, alongside silencing one
+deprecation notice on the same line whose replacement API (a new
+tri-state `CheckedState` type) isn't confirmable without a real
+compiler. The rest were a genuine Flutter breaking change: `RadioListTile`'s
+`groupValue`/`onChanged` are deprecated in favor of an ancestor
+`RadioGroup` widget (confirmed against Flutter's own migration docs) —
+migrated `language_screen.dart` to the new pattern. Plus two more
+`prefer_const_constructors` spots. See `docs/ARCHITECTURE.md` §4 (Round
+9, fifth CI run). Not confirmed green yet — the pattern so far is that
+each "looks done" screenshot has had more waiting above the fold, so
+don't be surprised by a sixth round.
+
 Before that, round 8's CI run passed clean on both jobs — the whole app
 compiled with `flutter analyze` and every calendar-engine test passed on
 a real, executed Dart runtime for the first time — but going on to write

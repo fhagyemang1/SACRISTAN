@@ -81,10 +81,10 @@ class SettingsScreen extends StatelessWidget {
             onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const LanguageScreen())),
           ),
-          ListTile(
-            leading: const Icon(Icons.brightness_6_outlined),
-            title: const Text('Appearance'),
-            subtitle: const Text('Follows system light/dark mode'),
+          const ListTile(
+            leading: Icon(Icons.brightness_6_outlined),
+            title: Text('Appearance'),
+            subtitle: Text('Follows system light/dark mode'),
           ),
           ListTile(
             leading: const Icon(Icons.info_outline),

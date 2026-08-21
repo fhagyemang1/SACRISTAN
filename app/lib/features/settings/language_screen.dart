@@ -17,18 +17,24 @@ class LanguageScreen extends StatelessWidget {
     final controller = context.watch<LocaleController>();
     return Scaffold(
       appBar: AppBar(title: const Text('Language')),
-      body: ListView(
-        children: [
-          for (final locale in supportedLocales)
-            RadioListTile<String>(
-              value: locale.languageCode,
-              groupValue: controller.locale.languageCode,
-              title: Text(_names[locale.languageCode] ?? locale.languageCode),
-              onChanged: (code) {
-                if (code != null) controller.setLocale(Locale(code));
-              },
-            ),
-        ],
+      // Round 9: Radio/RadioListTile's own `groupValue`/`onChanged` are
+      // deprecated as of Flutter's Radio API redesign — the group is now
+      // owned by an ancestor `RadioGroup`, with each RadioListTile taking
+      // only `value`. See https://docs.flutter.dev/release/breaking-changes/radio-api-redesign
+      body: RadioGroup<String>(
+        groupValue: controller.locale.languageCode,
+        onChanged: (code) {
+          if (code != null) controller.setLocale(Locale(code));
+        },
+        child: ListView(
+          children: [
+            for (final locale in supportedLocales)
+              RadioListTile<String>(
+                value: locale.languageCode,
+                title: Text(_names[locale.languageCode] ?? locale.languageCode),
+              ),
+          ],
+        ),
       ),
     );
   }

@@ -47,9 +47,9 @@ class AppTheme {
           textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
         ),
       ),
-      checkboxTheme: CheckboxThemeData(
+      checkboxTheme: const CheckboxThemeData(
         materialTapTargetSize: MaterialTapTargetSize.padded,
-        visualDensity: const VisualDensity(horizontal: 2, vertical: 2),
+        visualDensity: VisualDensity(horizontal: 2, vertical: 2),
       ),
       listTileTheme: const ListTileThemeData(
         minVerticalPadding: 16,
