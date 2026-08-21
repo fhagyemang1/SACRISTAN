@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
@@ -283,11 +284,33 @@ LazyDatabase _openConnection() {
 String newId() => _uuid();
 
 String _uuid() {
-  // Lightweight, dependency-free v4-ish UUID: good enough for a local
-  // primary key that never has to be globally unique across devices
-  // (no sync in this build). Swap for package:uuid if/when cloud sync is
-  // added and cross-device uniqueness starts to matter.
-  final rnd = DateTime.now().microsecondsSinceEpoch;
-  final rand2 = identityHashCode(Object());
-  return '${rnd.toRadixString(16)}-${rand2.toRadixString(16)}';
+  // Round 10: the original version of this function combined
+  // `DateTime.now().microsecondsSinceEpoch` with `identityHashCode
+  // (Object())` for entropy — and neither half of that is actually a
+  // uniqueness guarantee. `DateTime.now()`'s real-world resolution isn't
+  // guaranteed to be sub-microsecond on every platform this app ships to
+  // (iOS/Android/Windows); and `identityHashCode()` is explicitly *not*
+  // documented as collision-free — two distinct objects can share one.
+  // The first place this function runs at any volume is `main.dart`'s
+  // first-launch seeding loop, ~100 sequential `await ...insert(...)`
+  // calls building the built-in checklist templates before the UI even
+  // shows — a primary-key collision there throws on insert and would
+  // crash the app before a sacristan ever sees a screen. No CI run
+  // caught this (a collision is a runtime probability, not a type
+  // error), so this was manual review, the same way round 6 and round 8's
+  // worst findings were.
+  //
+  // Fixed with real randomness instead of derived-from-timing entropy:
+  // 128 bits from `Random.secure()` (a CSPRNG, part of `dart:math` — no
+  // new package, so no risk of repeating round 9's dependency-conflict
+  // saga), formatted as a conventional-looking v4 UUID. Collision
+  // probability across the low thousands of rows this app will ever
+  // hold in one parish's database is effectively zero.
+  final rnd = Random.secure();
+  final bytes = List<int>.generate(16, (_) => rnd.nextInt(256));
+  bytes[6] = (bytes[6] & 0x0F) | 0x40; // version 4
+  bytes[8] = (bytes[8] & 0x3F) | 0x80; // variant 1
+  final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-'
+      '${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
 }

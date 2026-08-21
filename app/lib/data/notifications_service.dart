@@ -86,9 +86,9 @@ class NotificationsService {
     if (!supportsNativeNotifications) return; // see PLATFORM NOTE above
     // Reminder ids are strings (uuid-ish, see database.dart's newId());
     // flutter_local_notifications wants a stable int id, so we derive one
-    // deterministically from the string id rather than tracking a second
-    // counter.
-    final notifId = id.hashCode & 0x7fffffff;
+    // deterministically from the string id — see [stableNotificationId]
+    // for why that must NOT be `.hashCode`.
+    final notifId = stableNotificationId(id);
     await _plugin.zonedSchedule(
       notifId,
       title,
@@ -115,6 +115,40 @@ class NotificationsService {
   Future<void> cancel(String id) async {
     await init();
     if (!supportsNativeNotifications) return;
-    await _plugin.cancel(id.hashCode & 0x7fffffff);
+    await _plugin.cancel(stableNotificationId(id));
   }
+}
+
+/// Round 10: turns a reminder id into the int id
+/// `flutter_local_notifications` wants — deterministically, and the same
+/// way on every run of the app, forever. Deliberately not prefixed with
+/// `_`: it's a pure, deterministic function with no dependency on the
+/// notification plugin, so it's directly unit-testable (see
+/// `test/data/notifications_service_test.dart`) without needing to mock
+/// `flutter_local_notifications` — not because it's meant to be called
+/// from outside this file. This used to be
+/// `id.hashCode & 0x7fffffff`, which is a real bug: Dart's own docs on
+/// `Object.hashCode` say values "need not be consistent between
+/// executions of the same program." `zonedSchedule()` and `cancel()` are
+/// routinely called from *different app sessions* — you add a reminder
+/// today, close the app, and cancel it next week — and
+/// `flutter_local_notifications` schedules persist at the OS level
+/// independent of whether this process is even still running. If a
+/// later session's `.hashCode` for the same string id ever differs from
+/// the session that originally scheduled it, `cancel()` derives the
+/// wrong notification id and silently fails to cancel the real one: the
+/// user sees the reminder disappear from the app's list (the database
+/// row really is deactivated) while the original OS-level notification
+/// fires anyway. A hand-rolled FNV-1a hash sidesteps the whole class of
+/// risk, since it's an algorithm this file owns outright rather than
+/// borrowing an object's built-in, explicitly-unstable hashCode.
+int stableNotificationId(String id) {
+  const fnvOffsetBasis = 0x811c9dc5;
+  const fnvPrime = 0x01000193;
+  var hash = fnvOffsetBasis;
+  for (final codeUnit in id.codeUnits) {
+    hash ^= codeUnit;
+    hash = (hash * fnvPrime) & 0xFFFFFFFF;
+  }
+  return hash & 0x7fffffff;
 }
