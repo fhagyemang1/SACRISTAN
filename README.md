@@ -65,8 +65,25 @@ then failed on two *different*, smaller real issues — an unused import
 (`computus.dart`, dead code in `calendar_engine.dart`, removed) and
 another version-solving conflict (`share_plus ^9.0.0` vs. `drift`'s `web`
 dependency; bumped to `^13.3.0`, the exact version pub's own resolver
-suggested). Also fixed, also not yet re-confirmed by a passing run — see
-`docs/ARCHITECTURE.md` §4 (Round 9, continued) for the full detail.
+suggested).
+
+Those were pushed and CI ran a fourth time: both jobs finally got past
+dependency resolution entirely and reached real analysis/test execution
+— and each found something new. `dart test` failed 3 tests, and this
+time it's a genuine logic bug, not a toolchain quirk: the calendar
+engine's precedence tie-break used a signal (`CalendarSource.computed`)
+that's shared by both the generic day filler *and* every named movable
+celebration (Easter, Pentecost, Palm Sunday...), so on days where a
+named Sunday-rank celebration and the filler tied for precedence, which
+one displayed could depend on `List.sort`'s (not-guaranteed-stable)
+tie order — Easter Sunday could show `goldPermitted: false`, Pentecost
+could show white instead of red. Fixed with an unambiguous key-based
+check. Separately, `flutter analyze` ran for the very first time in this
+project's life and found 42 issues; only the log's tail was visible, and
+4 of those (one missing import in a test file) plus a share_plus
+deprecation notice are fixed — **the other ~38 are still unseen and
+need the fuller log to fix.** See `docs/ARCHITECTURE.md` §4 (Round 9,
+third CI run) for the full detail.
 
 Before that, round 8's CI run passed clean on both jobs — the whole app
 compiled with `flutter analyze` and every calendar-engine test passed on

@@ -179,21 +179,18 @@ class InventoryScreen extends StatelessWidget {
         'sacristan_shopping_list_${DateTime.now().toIso8601String().substring(0, 10)}.csv'));
     await file.writeAsString(csv);
     if (context.mounted) {
-      // Note: share_plus's API has shifted between major versions (older
-      // `Share.shareXFiles(...)` vs. newer `SharePlus.instance.share(...)`).
-      // pubspec.yaml pins `share_plus: ^13.3.0` (bumped in round 9 to
-      // resolve a real version-solving conflict with `drift`'s `web`
-      // dependency — see that pin's comment). The static `Share` class
-      // used here has been deprecated since share_plus 11.0.0 in favor of
-      // `SharePlus.instance.share(ShareParams(...))`, but it is still
-      // present and functional through 13.x, so this call site was left
-      // as-is rather than rewritten sight-unseen; migrating to the new
-      // API is a reasonable future cleanup once a real `flutter analyze`
-      // run confirms exactly what it now flags here.
-      await Share.shareXFiles(
-        [XFile(file.path)],
+      // share_plus's API shifted in 11.0.0: the static `Share` class (and
+      // `Share.shareXFiles`) is deprecated in favor of
+      // `SharePlus.instance.share(ShareParams(...))`. pubspec.yaml pins
+      // `share_plus: ^13.3.0` (bumped in round 9 to resolve a real
+      // version-solving conflict with `drift`'s `web` dependency), and
+      // round 9's first successful `flutter analyze` run flagged the old
+      // call here (`deprecated_member_use`) among its 42 issues — using
+      // the current, non-deprecated API instead.
+      await SharePlus.instance.share(ShareParams(
+        files: [XFile(file.path)],
         subject: 'SACRISTAN low-stock shopping list',
-      );
+      ));
     }
   }
 

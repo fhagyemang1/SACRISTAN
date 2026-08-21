@@ -6,6 +6,23 @@ import 'season_engine.dart';
 
 const _defaultSource = CalendarSource.computed;
 
+/// True only for the generic per-day filler `_defaultCelebration` produces
+/// ("5th Sunday in Ordinary Time", "Lenten Weekday, Week 3", etc.) — never
+/// for a named movable celebration (Easter, Pentecost, Ash Wednesday...),
+/// even though both share [CalendarSource.computed] as their [source] (see
+/// the doc comment on that enum value in `models.dart`). Every filler key
+/// `_defaultCelebration` builds starts with `'default'` (`'default.…'` or
+/// the privileged-ferial `'default.privileged.…'`); no named celebration
+/// anywhere in this package uses that prefix. Round 9's first real `dart
+/// test` run (see ARCHITECTURE.md §4) found that the previous
+/// `c.source == _defaultSource` check used for this purpose incorrectly
+/// also matched named movable solemnities that land in the same
+/// precedence tier as the filler (Easter Sunday, Pentecost) — the tie
+/// then fell back on list order, which is not guaranteed stable by
+/// `List.sort`, so the filler sometimes won and reported the wrong
+/// color/goldPermitted. This key-based check is unambiguous.
+bool _isGenericFiller(Celebration c) => c.key.startsWith('default');
+
 /// Precedence tiers, loosely modeled on the Roman Missal's "Table of
 /// Liturgical Days" (General Norms for the Liturgical Year, nn. 59-61),
 /// simplified to what a parish sacristan app actually needs to get right.
@@ -40,12 +57,18 @@ int _tier(Celebration c, {required bool isSunday, required LiturgicalSeason seas
   if (topPrecedenceKeys.contains(c.key)) return 1;
   if (c.rank == CelebrationRank.solemnity) return 2;
   if (c.rank == CelebrationRank.feast) return 3;
-  if (c.source == _defaultSource && c.key.startsWith('default.privileged')) {
+  if (_isGenericFiller(c) && c.key.startsWith('default.privileged')) {
     return 4;
   }
-  if (isSunday) return 5;
+  // Only the day's own Sunday-rank celebration belongs at this tier — not
+  // every candidate merely because [isSunday] (the *date*) is true. A
+  // round-9-found bug had this checking the date instead of the
+  // candidate, so a local optional-memorial entry landing on a Sunday
+  // incorrectly tied with (and, via the same-source bug above, could
+  // even beat) the actual Sunday celebration.
+  if (isSunday && c.rank == CelebrationRank.sunday) return 5;
   if (c.rank == CelebrationRank.memorial) return 6;
-  if (c.source == _defaultSource) return 7; // plain ferial default
+  if (_isGenericFiller(c)) return 7; // plain ferial default
   if (c.rank == CelebrationRank.optionalMemorial) return 8;
   return 9;
 }
@@ -228,10 +251,14 @@ LiturgicalDay resolveLiturgicalDay(
     final ta = _tier(a, isSunday: isSunday, season: seasonRes.season);
     final tb = _tier(b, isSunday: isSunday, season: seasonRes.season);
     if (ta != tb) return ta.compareTo(tb);
-    // Tie-break: a named (non-default) entry is shown ahead of the
-    // generic filler default when they'd otherwise be equal.
-    final aIsDefault = a.source == _defaultSource;
-    final bIsDefault = b.source == _defaultSource;
+    // Tie-break: a named (non-filler) entry is shown ahead of the
+    // generic filler default when they'd otherwise be equal. Must use
+    // the key-based check, not `source`: named movable celebrations
+    // (Easter, Pentecost, ...) share `CalendarSource.computed` with the
+    // filler itself, so a source-based check can't tell them apart —
+    // see `_isGenericFiller`'s doc comment.
+    final aIsDefault = _isGenericFiller(a);
+    final bIsDefault = _isGenericFiller(b);
     if (aIsDefault != bIsDefault) return aIsDefault ? 1 : -1;
     return 0;
   });
@@ -244,7 +271,7 @@ LiturgicalDay resolveLiturgicalDay(
   final primaryTier =
       _tier(candidates.first, isSunday: isSunday, season: seasonRes.season);
   final filtered = candidates.where((c) {
-    if (c.source != _defaultSource) return true;
+    if (!_isGenericFiller(c)) return true;
     final t = _tier(c, isSunday: isSunday, season: seasonRes.season);
     return t <= primaryTier || identical(c, candidates.first);
   }).toList();

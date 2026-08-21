@@ -46,17 +46,19 @@ enum CelebrationRank {
 /// Pentecost, Trinity Sunday, etc. — see `general_roman_calendar.dart`'s
 /// `movableCelebrationsForYear`) *and* the generic per-day filler
 /// ("5th Sunday in Ordinary Time", "Lenten Weekday, Week 3" — see
-/// `calendar_engine.dart`'s `_defaultCelebration`). `calendar_engine.dart`
-/// relies on its precedence *tier* (not this source value) to prefer a
-/// named movable celebration over the generic filler when both land on
-/// the same day; the source-based tie-break in `resolveLiturgicalDay`
-/// only meaningfully distinguishes [generalRomanCalendar]/[localSupplement]
-/// entries from a same-tier [computed] one, not movable celebrations from
-/// filler among themselves. Splitting this into two distinct enum values
-/// (e.g. `movable` vs `defaultFiller`) would be a cleaner design but is
-/// deferred as a non-trivial refactor across every use of `_mv`/
-/// `_defaultSource` — flagged here rather than attempted without a
-/// compiler to verify the change.
+/// `calendar_engine.dart`'s `_defaultCelebration`). Round 6 flagged this
+/// as a latent risk ("no reproducible bug was found from it") and
+/// round 9's first real `dart test` run found the reproducible bug: a
+/// named movable solemnity and the filler can land in the same
+/// precedence tier (Easter Sunday, Pentecost — both top-tier and on a
+/// Sunday), and a same-[source] tie-break couldn't tell them apart,
+/// silently preferring whichever the (not-guaranteed-stable) sort left
+/// first. `calendar_engine.dart` no longer uses [source] to identify the
+/// filler — `_isGenericFiller()` there checks the filler's `key` prefix
+/// (`'default'`) instead, which every filler celebration has and no
+/// named one ever does. [source] itself is unchanged and still correctly
+/// distinguishes [generalRomanCalendar]/[localSupplement] origin; only
+/// the filler-vs-named distinction moved off of it.
 enum CalendarSource { generalRomanCalendar, computed, localSupplement }
 
 /// Sunday lectionary cycle (three-year cycle of Sunday readings).
