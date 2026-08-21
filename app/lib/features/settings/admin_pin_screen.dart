@@ -32,7 +32,7 @@ class _AdminPinScreenState extends State<AdminPinScreen> {
   Future<void> _load() async {
     final db = context.read<SacristanDatabase>();
     final profiles = await (db.select(db.profiles)
-          ..where((p) => p.role.equals(ProfileRole.admin)))
+          ..where((p) => p.role.equalsValue(ProfileRole.admin)))
         .get();
     setState(() {
       _adminProfile = profiles.isEmpty ? null : profiles.first;

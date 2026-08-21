@@ -48,75 +48,82 @@ const _postMassCore = [
   BuiltinItem('sanctuaryReset', 'Sanctuary restored to order'),
 ];
 
+// Every entry below is `const` — each `items` list is either a direct
+// reference to an already-const top-level list (`_preMassCore` /
+// `_postMassCore`) or an inline `const [...]` literal (spreads of a
+// const list plus const `BuiltinItem`s are themselves valid compile-time
+// constants). Previously only the individual `BuiltinItem`s were const,
+// not the enclosing `BuiltinTemplate`/list — round 9's first real
+// `flutter analyze` run flagged all of these as `prefer_const_constructors`.
 final List<BuiltinTemplate> builtinTemplates = [
-  BuiltinTemplate('Sunday Mass — Before Mass', MassType.sunday, 'pre',
+  const BuiltinTemplate('Sunday Mass — Before Mass', MassType.sunday, 'pre',
       [..._preMassCore, _thuribleItem]),
-  BuiltinTemplate('Sunday Mass — After Mass', MassType.sunday, 'post', _postMassCore),
-  BuiltinTemplate('Weekday Mass — Before Mass', MassType.weekday, 'pre', _preMassCore),
-  BuiltinTemplate('Weekday Mass — After Mass', MassType.weekday, 'post', _postMassCore),
-  BuiltinTemplate('Funeral Mass — Before Mass', MassType.funeral, 'pre', [
+  const BuiltinTemplate('Sunday Mass — After Mass', MassType.sunday, 'post', _postMassCore),
+  const BuiltinTemplate('Weekday Mass — Before Mass', MassType.weekday, 'pre', _preMassCore),
+  const BuiltinTemplate('Weekday Mass — After Mass', MassType.weekday, 'post', _postMassCore),
+  const BuiltinTemplate('Funeral Mass — Before Mass', MassType.funeral, 'pre', [
     ..._preMassCore,
-    const BuiltinItem('paschalCandleFuneral', 'Paschal candle placed by the casket'),
-    const BuiltinItem('pallFuneral', 'Funeral pall available for the casket'),
-    const BuiltinItem('holyWaterFuneral', 'Holy water and sprinkler ready'),
-    const BuiltinItem('coordFuneralDirector', 'Coordinate timing with the funeral director'),
+    BuiltinItem('paschalCandleFuneral', 'Paschal candle placed by the casket'),
+    BuiltinItem('pallFuneral', 'Funeral pall available for the casket'),
+    BuiltinItem('holyWaterFuneral', 'Holy water and sprinkler ready'),
+    BuiltinItem('coordFuneralDirector', 'Coordinate timing with the funeral director'),
   ]),
-  BuiltinTemplate('Funeral Mass — After Mass', MassType.funeral, 'post', _postMassCore),
-  BuiltinTemplate('Wedding — Before Mass', MassType.wedding, 'pre', [
+  const BuiltinTemplate('Funeral Mass — After Mass', MassType.funeral, 'post', _postMassCore),
+  const BuiltinTemplate('Wedding — Before Mass', MassType.wedding, 'pre', [
     ..._preMassCore,
-    const BuiltinItem('unityCandle', 'Unity candle / other requested items placed, per pastor\'s policy'),
-    const BuiltinItem('kneelers', 'Kneelers set out for the couple'),
-    const BuiltinItem('ringsReminder', 'Confirm best man/maid of honor know where to bring the rings'),
+    BuiltinItem('unityCandle', 'Unity candle / other requested items placed, per pastor\'s policy'),
+    BuiltinItem('kneelers', 'Kneelers set out for the couple'),
+    BuiltinItem('ringsReminder', 'Confirm best man/maid of honor know where to bring the rings'),
   ]),
-  BuiltinTemplate('Wedding — After Mass', MassType.wedding, 'post', _postMassCore),
-  BuiltinTemplate('Baptism — Before', MassType.baptism, 'pre', [
-    const BuiltinItem('baptismalWater', 'Baptismal water ready in the font'),
-    const BuiltinItem('oilOfCatechumens', 'Oil of Catechumens available'),
-    const BuiltinItem('sacredChrism', 'Sacred Chrism available'),
-    const BuiltinItem('whiteGarment', 'White garment ready'),
-    const BuiltinItem('baptismalCandle', 'Baptismal candle ready (lit from the paschal candle)'),
-    const BuiltinItem('towels', 'Towels for the child/candidate'),
+  const BuiltinTemplate('Wedding — After Mass', MassType.wedding, 'post', _postMassCore),
+  const BuiltinTemplate('Baptism — Before', MassType.baptism, 'pre', [
+    BuiltinItem('baptismalWater', 'Baptismal water ready in the font'),
+    BuiltinItem('oilOfCatechumens', 'Oil of Catechumens available'),
+    BuiltinItem('sacredChrism', 'Sacred Chrism available'),
+    BuiltinItem('whiteGarment', 'White garment ready'),
+    BuiltinItem('baptismalCandle', 'Baptismal candle ready (lit from the paschal candle)'),
+    BuiltinItem('towels', 'Towels for the child/candidate'),
   ]),
-  BuiltinTemplate('Baptism — After', MassType.baptism, 'post', [
-    const BuiltinItem('driedFont', 'Font and surrounding area dried and tidied'),
-    const BuiltinItem('oilsStored', 'Holy oils safely stored'),
+  const BuiltinTemplate('Baptism — After', MassType.baptism, 'post', [
+    BuiltinItem('driedFont', 'Font and surrounding area dried and tidied'),
+    BuiltinItem('oilsStored', 'Holy oils safely stored'),
   ]),
-  BuiltinTemplate('Benediction / Adoration — Before', MassType.benediction, 'pre', [
-    const BuiltinItem('monstrance', 'Monstrance cleaned and ready', 'Ostensorium'),
-    const BuiltinItem('luna', 'Luna/lunette in place', 'Luna'),
-    const BuiltinItem('humeralVeil', 'Humeral veil ready', 'Velum Humerale'),
+  const BuiltinTemplate('Benediction / Adoration — Before', MassType.benediction, 'pre', [
+    BuiltinItem('monstrance', 'Monstrance cleaned and ready', 'Ostensorium'),
+    BuiltinItem('luna', 'Luna/lunette in place', 'Luna'),
+    BuiltinItem('humeralVeil', 'Humeral veil ready', 'Velum Humerale'),
     _thuribleItem,
-    const BuiltinItem('kneelerCushion', 'Kneeler/cushion set out for the celebrant'),
+    BuiltinItem('kneelerCushion', 'Kneeler/cushion set out for the celebrant'),
   ]),
-  BuiltinTemplate('Benediction / Adoration — After', MassType.benediction, 'post', [
-    const BuiltinItem('reposeBlessedSacrament', 'Blessed Sacrament reposed in the tabernacle'),
-    const BuiltinItem('extinguishCandlesAdoration', 'Candles extinguished'),
-    const BuiltinItem('monstranceStored', 'Monstrance cleaned and stored'),
+  const BuiltinTemplate('Benediction / Adoration — After', MassType.benediction, 'post', [
+    BuiltinItem('reposeBlessedSacrament', 'Blessed Sacrament reposed in the tabernacle'),
+    BuiltinItem('extinguishCandlesAdoration', 'Candles extinguished'),
+    BuiltinItem('monstranceStored', 'Monstrance cleaned and stored'),
   ]),
-  BuiltinTemplate('Holy Week — Palm Sunday', MassType.holyWeek, 'pre', [
-    const BuiltinItem('palms', 'Palm branches obtained and distributed at the entrance'),
-    const BuiltinItem('redVestments', 'Red vestments laid out'),
-    const BuiltinItem('passionGospel', 'Passion narrative marked / assigned readers'),
+  const BuiltinTemplate('Holy Week — Palm Sunday', MassType.holyWeek, 'pre', [
+    BuiltinItem('palms', 'Palm branches obtained and distributed at the entrance'),
+    BuiltinItem('redVestments', 'Red vestments laid out'),
+    BuiltinItem('passionGospel', 'Passion narrative marked / assigned readers'),
   ]),
-  BuiltinTemplate('Holy Week — Holy Thursday', MassType.holyWeek, 'pre', [
-    const BuiltinItem('chrismOilsReceived', 'Holy oils from the Chrism Mass received and stored'),
-    const BuiltinItem('mandatumBasin', 'Basin, pitcher, and towels ready for the Mandatum (washing of feet)'),
-    const BuiltinItem('altarOfReposition', 'Altar of repose prepared'),
-    const BuiltinItem('extraHostsTriduum', 'Sufficient hosts consecrated for Good Friday'),
-    const BuiltinItem('stripAltarAfter', 'Plan to strip the main altar after the liturgy'),
+  const BuiltinTemplate('Holy Week — Holy Thursday', MassType.holyWeek, 'pre', [
+    BuiltinItem('chrismOilsReceived', 'Holy oils from the Chrism Mass received and stored'),
+    BuiltinItem('mandatumBasin', 'Basin, pitcher, and towels ready for the Mandatum (washing of feet)'),
+    BuiltinItem('altarOfReposition', 'Altar of repose prepared'),
+    BuiltinItem('extraHostsTriduum', 'Sufficient hosts consecrated for Good Friday'),
+    BuiltinItem('stripAltarAfter', 'Plan to strip the main altar after the liturgy'),
   ]),
-  BuiltinTemplate('Holy Week — Good Friday', MassType.holyWeek, 'pre', [
-    const BuiltinItem('bareAltar', 'Main altar left completely bare (no cloth, candles, or cross)'),
-    const BuiltinItem('crossForVeneration', 'Cross prepared for veneration'),
-    const BuiltinItem('reservedHostsGoodFriday', 'Reserved hosts from Holy Thursday ready for Communion'),
-    const BuiltinItem('redVestmentsGoodFriday', 'Red vestments laid out'),
+  const BuiltinTemplate('Holy Week — Good Friday', MassType.holyWeek, 'pre', [
+    BuiltinItem('bareAltar', 'Main altar left completely bare (no cloth, candles, or cross)'),
+    BuiltinItem('crossForVeneration', 'Cross prepared for veneration'),
+    BuiltinItem('reservedHostsGoodFriday', 'Reserved hosts from Holy Thursday ready for Communion'),
+    BuiltinItem('redVestmentsGoodFriday', 'Red vestments laid out'),
   ]),
-  BuiltinTemplate('Holy Week — Easter Vigil', MassType.holyWeek, 'pre', [
-    const BuiltinItem('newFire', 'New fire materials ready (fire pit/brazier, fuel)'),
-    const BuiltinItem('paschalCandle', 'New paschal candle prepared (with grains of incense)'),
-    const BuiltinItem('baptismalItemsVigil', 'Baptismal/confirmation items ready for the Elect and Candidates'),
-    const BuiltinItem('individualCandles', 'Small candles for the congregation'),
-    const BuiltinItem('whiteGoldVestmentsVigil', 'White/gold vestments laid out'),
-    const BuiltinItem('bellsRestored', 'Bells and Gloria ready to be restored at the Vigil'),
+  const BuiltinTemplate('Holy Week — Easter Vigil', MassType.holyWeek, 'pre', [
+    BuiltinItem('newFire', 'New fire materials ready (fire pit/brazier, fuel)'),
+    BuiltinItem('paschalCandle', 'New paschal candle prepared (with grains of incense)'),
+    BuiltinItem('baptismalItemsVigil', 'Baptismal/confirmation items ready for the Elect and Candidates'),
+    BuiltinItem('individualCandles', 'Small candles for the congregation'),
+    BuiltinItem('whiteGoldVestmentsVigil', 'White/gold vestments laid out'),
+    BuiltinItem('bellsRestored', 'Bells and Gloria ready to be restored at the Vigil'),
   ]),
 ];

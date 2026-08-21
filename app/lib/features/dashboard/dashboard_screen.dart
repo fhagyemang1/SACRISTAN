@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../data/repositories.dart';
 import '../../l10n/app_localizations.dart';
+import '../../theme/app_theme.dart';
 import '../common/color_chip.dart';
 
 /// The screen a sacristan sees first, and the one the whole app is built

@@ -81,9 +81,25 @@ could show white instead of red. Fixed with an unambiguous key-based
 check. Separately, `flutter analyze` ran for the very first time in this
 project's life and found 42 issues; only the log's tail was visible, and
 4 of those (one missing import in a test file) plus a share_plus
-deprecation notice are fixed — **the other ~38 are still unseen and
-need the fuller log to fix.** See `docs/ARCHITECTURE.md` §4 (Round 9,
-third CI run) for the full detail.
+deprecation notice are fixed.
+
+Pushed again, and CI ran a fourth time: `dart test` is now fully
+**green** (confirming the precedence-engine fix), and searching the
+`app-analyze` log for "error" surfaced three real compile errors rather
+than just lints. Two are the same root cause: `.equals(anEnumValue)`
+on a drift column that stores an enum as text needs `.equalsValue(...)`
+instead — drift's own docs confirm `.equals()` expects the raw stored
+type (`String`), not the converted enum. **This means round 3's original
+finding (that `.equalsValue()` "isn't a real drift method") was itself
+wrong** — round 9 is what finally caught it for real. Fixed both flagged
+call sites plus one more of the same kind found by grepping for the
+pattern. The third error was a missing import (`swatchFor()` called
+without importing the file that defines it) — fixed there, plus one more
+call site found the same way. Also constified all 16 entries of
+`builtin_templates.dart`, the same `prefer_const_constructors` pattern
+from earlier in this round. See `docs/ARCHITECTURE.md` §4 (Round 9,
+fourth CI run) for the full detail — likely still more to find on the
+next run.
 
 Before that, round 8's CI run passed clean on both jobs — the whole app
 compiled with `flutter analyze` and every calendar-engine test passed on

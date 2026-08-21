@@ -101,7 +101,7 @@ class MassRepository {
     final end = start.add(const Duration(days: 1));
     return (db.select(db.masses)
           ..where((m) =>
-              m.massType.equals(type) &
+              m.massType.equalsValue(type) &
               m.date.isBiggerOrEqualValue(start) &
               m.date.isSmallerThanValue(end))
           ..orderBy([(m) => OrderingTerm.asc(m.date)]))
@@ -128,7 +128,7 @@ class ChecklistRepository {
 
   Stream<List<ChecklistTemplate>> watchTemplatesFor(MassType type) {
     return (db.select(db.checklistTemplates)
-          ..where((t) => t.massType.equals(type)))
+          ..where((t) => t.massType.equalsValue(type)))
         .watch();
   }
 

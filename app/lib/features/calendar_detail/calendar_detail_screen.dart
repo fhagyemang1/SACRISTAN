@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../data/repositories.dart';
 import '../../l10n/app_localizations.dart';
+import '../../theme/app_theme.dart';
 import '../common/color_chip.dart';
 
 /// Lets a sacristan tap any date — past or years into the future — and see
