@@ -1,0 +1,54 @@
+name: CI
+
+# Added so this project can get REAL compiler/test feedback without a
+# local Flutter install — this whole app was built in a sandbox that
+# cannot install the Dart/Flutter SDK (see README.md and
+# docs/ARCHITECTURE.md §4 for the full explanation). Push this repo to
+# GitHub and this workflow runs on GitHub's own runners, which have full,
+# unrestricted internet access to pub.dev etc. Check the "Actions" tab on
+# your repo after pushing to see real pass/fail results.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  calendar-engine-tests:
+    name: liturgical_calendar package — dart test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+      - name: dart pub get
+        working-directory: packages/liturgical_calendar
+        run: dart pub get
+      - name: dart analyze
+        working-directory: packages/liturgical_calendar
+        run: dart analyze --fatal-infos
+      - name: dart test
+        working-directory: packages/liturgical_calendar
+        run: dart test --reporter expanded
+
+  app-analyze:
+    name: Flutter app — pub get, codegen, analyze
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: flutter pub get
+        working-directory: app
+        run: flutter pub get
+      - name: Generate drift + localization code
+        working-directory: app
+        run: dart run build_runner build --delete-conflicting-outputs
+      - name: flutter analyze
+        working-directory: app
+        run: flutter analyze
+      - name: flutter test (widget/unit tests, if any exist yet)
+        working-directory: app
+        run: flutter test
+        continue-on-error: true # no app-level test/ directory has been written yet — see README's "still open" list; this step is here so it starts reporting real results the moment one is added, without failing CI in the meantime.

@@ -1,0 +1,78 @@
+name: sacristan
+description: >
+  SACRISTAN — an offline-first companion for Catholic sacristans: today's
+  liturgical color/rank/season at a glance, Mass-prep checklists, vestment
+  and vessel inventory, and an offline reference library. No account,
+  no network required for any core feature.
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.6.0 <4.0.0"
+  # 3.27+ because the UI code uses Color.withValues(alpha: ...) (the
+  # replacement for the deprecated Color.withOpacity), which requires
+  # Flutter 3.27 or newer. If you deliberately target an older Flutter,
+  # either raise a lint warning suppression or revert those call sites to
+  # .withOpacity() — search this repo for "withValues" to find them all.
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Local calendar engine (pure Dart, this repo)
+  liturgical_calendar:
+    path: ../packages/liturgical_calendar
+
+  # Local, offline SQLite data layer
+  drift: ^2.20.0
+  sqlite3_flutter_libs: ^0.5.24
+  path_provider: ^2.1.3
+  path: ^1.9.0
+
+  # State management (simple, low ceremony — appropriate for a small/volunteer team)
+  provider: ^6.1.2
+
+  # Local (device-only) notifications — no server-side push
+  flutter_local_notifications: ^17.2.2
+  timezone: ^0.9.4
+
+  # SMS deep-link (opens the device's own Messages app pre-filled; no SMS gateway/account needed)
+  url_launcher: ^6.3.0
+
+  # Optional shopping-list export
+  csv: ^6.0.0
+  share_plus: ^9.0.0
+
+  # Icons/formatting
+  intl: ^0.19.0
+  cupertino_icons: ^1.0.8
+
+  # Salted-hash storage for the admin PIN (no plaintext PIN ever stored)
+  crypto: ^3.0.5
+
+  # Renders the bundled original SVG line-art in the Reference Library
+  flutter_svg: ^2.0.10
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  drift_dev: ^2.20.0
+  build_runner: ^2.4.11
+  flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.1
+
+flutter:
+  uses-material-design: true
+  generate: true # enables the l10n.yaml-driven ARB -> Dart codegen
+  assets:
+    - assets/reference/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  windows:
+    generate: true
+  image_path: "assets/reference/app_icon_source.png"
