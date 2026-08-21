@@ -181,8 +181,15 @@ class InventoryScreen extends StatelessWidget {
     if (context.mounted) {
       // Note: share_plus's API has shifted between major versions (older
       // `Share.shareXFiles(...)` vs. newer `SharePlus.instance.share(...)`).
-      // This targets the `share_plus: ^9.0.0` pin in pubspec.yaml — if you
-      // upgrade that package, check its changelog for the current call.
+      // pubspec.yaml pins `share_plus: ^13.3.0` (bumped in round 9 to
+      // resolve a real version-solving conflict with `drift`'s `web`
+      // dependency — see that pin's comment). The static `Share` class
+      // used here has been deprecated since share_plus 11.0.0 in favor of
+      // `SharePlus.instance.share(ShareParams(...))`, but it is still
+      // present and functional through 13.x, so this call site was left
+      // as-is rather than rewritten sight-unseen; migrating to the new
+      // API is a reasonable future cleanup once a real `flutter analyze`
+      // run confirms exactly what it now flags here.
       await Share.shareXFiles(
         [XFile(file.path)],
         subject: 'SACRISTAN low-stock shopping list',

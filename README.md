@@ -59,6 +59,15 @@ so the fix was adding `const` at 33 call sites, not loosening CI. See
 have not been re-verified by CI yet** — push them and re-run to confirm
 green.
 
+Those two fixes were pushed and CI ran a third time: both jobs got
+further (confirming the `intl` and const-constructor fixes worked) and
+then failed on two *different*, smaller real issues — an unused import
+(`computus.dart`, dead code in `calendar_engine.dart`, removed) and
+another version-solving conflict (`share_plus ^9.0.0` vs. `drift`'s `web`
+dependency; bumped to `^13.3.0`, the exact version pub's own resolver
+suggested). Also fixed, also not yet re-confirmed by a passing run — see
+`docs/ARCHITECTURE.md` §4 (Round 9, continued) for the full detail.
+
 Before that, round 8's CI run passed clean on both jobs — the whole app
 compiled with `flutter analyze` and every calendar-engine test passed on
 a real, executed Dart runtime for the first time — but going on to write

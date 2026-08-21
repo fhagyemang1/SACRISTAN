@@ -44,7 +44,15 @@ dependencies:
 
   # Optional shopping-list export
   csv: ^6.0.0
-  share_plus: ^9.0.0
+  # Round 9's second real CI run failed "flutter pub get" here too: the
+  # ^9.0.0 pin transitively needs `web ^0.5.0`, but `drift >=2.19.2`
+  # (already required above) needs `web ^1.0.0` — incompatible. Bumped
+  # to the exact version pub's own resolver suggested
+  # (`flutter pub add share_plus:^13.3.0`) rather than guessed. The
+  # `Share.shareXFiles(...)` call in inventory_screen.dart is deprecated
+  # as of share_plus 11.0.0 but still present and functional through
+  # 13.x — see the comment at that call site.
+  share_plus: ^13.3.0
 
   # Icons/formatting
   # Pinned to what flutter_localizations (from the Flutter SDK itself)
