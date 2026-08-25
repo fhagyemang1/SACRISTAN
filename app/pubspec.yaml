@@ -87,7 +87,23 @@ flutter:
 
 flutter_launcher_icons:
   android: true
-  ios: true
+  # Off, not true: this project has no ios/ platform folder (iOS testing
+  # was dropped this round — no Mac available), and the tool crashes
+  # outright trying to write into ios/Runner/Assets.xcassets/... when
+  # that folder doesn't exist, taking the whole run down with it (it
+  # never reaches the windows: block below when this happens). Flip
+  # back to true once/if an ios/ folder is ever generated.
+  ios: false
   windows:
     generate: true
   image_path: "assets/reference/app_icon_source.png"
+  # Android adaptive icon: a separate foreground-only layer (transparent
+  # background, artwork inset within the safe zone) plus a solid backing
+  # color, so the emblem isn't clipped by whichever mask shape a phone's
+  # launcher applies (circle, squircle, rounded square, etc.). Without
+  # this, Android falls back to cropping image_path itself, which clips
+  # a full-bleed square icon on circular/squircle launchers.
+  # White matches image_path's own background (the user's preference,
+  # keeping the original logo's white card rather than the app's maroon).
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/reference/app_icon_foreground.png"

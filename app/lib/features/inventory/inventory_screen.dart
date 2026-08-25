@@ -152,8 +152,15 @@ class InventoryScreen extends StatelessWidget {
       ),
     );
     if (chosen == null) return;
+    // Another `await` (the dialog above) just passed — same
+    // `use_build_context_synchronously` concern as the guards above,
+    // and newly relevant here since round 11 made this call take
+    // `context` (to show a SnackBar if no messaging app can be opened —
+    // see sms_helper.dart) where it previously didn't need it at all.
+    if (!context.mounted) return;
     final summary = items.map((i) => '- ${i.name} (×${i.quantity})').join('\n');
-    await openSmsComposer(
+    await openSmsComposerWithFeedback(
+      context,
       phone: chosen.phone,
       body: 'SACRISTAN low-stock alert:\n$summary',
     );
@@ -214,6 +221,13 @@ class InventoryScreen extends StatelessWidget {
     var category = existing?.category ?? InventoryCategory.vessel;
     var quantity = existing?.quantity ?? 1;
     var lowStock = existing?.lowStockFlag ?? false;
+    // Round 11: guards the Add/Save button below against a double-tap
+    // creating a duplicate item. This only bites the *Add* path in
+    // practice (`existing == null`, so `repo.upsert` generates a fresh
+    // id every call) — the Save/edit path already reuses `existing.id`
+    // so a repeat call is a harmless no-op update — but guarding both
+    // uniformly is simpler than branching on which case is unsafe.
+    var submitting = false;
 
     await showDialog<void>(
       context: context,
@@ -308,21 +322,32 @@ class InventoryScreen extends StatelessWidget {
               child: const Text('Cancel'),
             ),
             FilledButton(
-              onPressed: () async {
-                if (nameCtrl.text.trim().isEmpty) return;
-                await repo.upsert(InventoryItemsCompanion(
-                  id: existing != null ? Value(existing.id) : const Value.absent(),
-                  category: Value(category),
-                  name: Value(nameCtrl.text.trim()),
-                  storageLocation: Value(
-                      locationCtrl.text.trim().isEmpty ? null : locationCtrl.text.trim()),
-                  condition: Value(
-                      conditionCtrl.text.trim().isEmpty ? null : conditionCtrl.text.trim()),
-                  quantity: Value(quantity),
-                  lowStockFlag: Value(lowStock),
-                ));
-                if (context.mounted) Navigator.of(context).pop();
-              },
+              onPressed: submitting
+                  ? null
+                  : () async {
+                      if (nameCtrl.text.trim().isEmpty) return;
+                      setState(() => submitting = true);
+                      try {
+                        await repo.upsert(InventoryItemsCompanion(
+                          id: existing != null
+                              ? Value(existing.id)
+                              : const Value.absent(),
+                          category: Value(category),
+                          name: Value(nameCtrl.text.trim()),
+                          storageLocation: Value(locationCtrl.text.trim().isEmpty
+                              ? null
+                              : locationCtrl.text.trim()),
+                          condition: Value(conditionCtrl.text.trim().isEmpty
+                              ? null
+                              : conditionCtrl.text.trim()),
+                          quantity: Value(quantity),
+                          lowStockFlag: Value(lowStock),
+                        ));
+                        if (context.mounted) Navigator.of(context).pop();
+                      } finally {
+                        if (context.mounted) setState(() => submitting = false);
+                      }
+                    },
               child: Text(existing == null ? 'Add' : 'Save'),
             ),
           ],

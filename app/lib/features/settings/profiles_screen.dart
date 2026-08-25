@@ -58,6 +58,10 @@ class ProfilesScreen extends StatelessWidget {
   Future<void> _showAddDialog(BuildContext context, ProfileRepository repo) async {
     final nameCtrl = TextEditingController();
     var role = ProfileRole.volunteer;
+    // Round 11: see the identical guard elsewhere (reminders_screen.dart,
+    // inventory_screen.dart, etc.) — prevents a double-tap on "Add" from
+    // creating two profile rows before the first `await` completes.
+    var submitting = false;
     await showDialog<void>(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -88,11 +92,18 @@ class ProfilesScreen extends StatelessWidget {
                 onPressed: () => Navigator.of(context).pop(),
                 child: const Text('Cancel')),
             FilledButton(
-              onPressed: () async {
-                if (nameCtrl.text.trim().isEmpty) return;
-                await repo.addProfile(nameCtrl.text.trim(), role);
-                if (context.mounted) Navigator.of(context).pop();
-              },
+              onPressed: submitting
+                  ? null
+                  : () async {
+                      if (nameCtrl.text.trim().isEmpty) return;
+                      setState(() => submitting = true);
+                      try {
+                        await repo.addProfile(nameCtrl.text.trim(), role);
+                        if (context.mounted) Navigator.of(context).pop();
+                      } finally {
+                        if (context.mounted) setState(() => submitting = false);
+                      }
+                    },
               child: const Text('Add'),
             ),
           ],

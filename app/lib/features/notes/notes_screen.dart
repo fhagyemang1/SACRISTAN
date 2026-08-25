@@ -25,6 +25,12 @@ class NotesScreen extends StatefulWidget {
 
 class _NotesScreenState extends State<NotesScreen> {
   final _controller = TextEditingController();
+  // Round 11: guards the "Add note" button below against a double-tap
+  // sending the same note text twice as two separate rows before the
+  // first `await repo.addForDate(...)` completes and `_controller.clear()`
+  // runs — the same duplicate-row shape found and fixed across the
+  // app's dialog-based "Add" buttons this round.
+  bool _submitting = false;
 
   @override
   void dispose() {
@@ -86,12 +92,19 @@ class _NotesScreenState extends State<NotesScreen> {
                   ),
                   const SizedBox(width: 8),
                   FilledButton(
-                    onPressed: () async {
-                      final text = _controller.text.trim();
-                      if (text.isEmpty) return;
-                      await repo.addForDate(widget.date, text);
-                      _controller.clear();
-                    },
+                    onPressed: _submitting
+                        ? null
+                        : () async {
+                            final text = _controller.text.trim();
+                            if (text.isEmpty) return;
+                            setState(() => _submitting = true);
+                            try {
+                              await repo.addForDate(widget.date, text);
+                              _controller.clear();
+                            } finally {
+                              if (mounted) setState(() => _submitting = false);
+                            }
+                          },
                     child: Text(AppLocalizations.of(context)!.addNote),
                   ),
                 ],

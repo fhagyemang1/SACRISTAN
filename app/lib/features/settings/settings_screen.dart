@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
 import 'admin_pin_screen.dart';
+import 'checklist_template_editor_screen.dart';
 import 'contacts_suppliers_screen.dart';
 import 'language_screen.dart';
 import 'local_calendar_editor_screen.dart';
@@ -36,6 +37,18 @@ class SettingsScreen extends StatelessWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const ProfilesScreen())),
+          ),
+          const Divider(),
+          const _SectionHeader('Checklists'),
+          ListTile(
+            leading: const Icon(Icons.checklist_outlined),
+            title: const Text('Manage Checklist Templates'),
+            subtitle: const Text(
+                'Add templates, add/remove/reorder their items — the '
+                '"before Mass" and "after Mass" lists sacristans check off'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const ChecklistTemplateEditorScreen())),
           ),
           const Divider(),
           const _SectionHeader('Calendar'),
@@ -154,6 +167,18 @@ class AboutScreen extends StatelessWidget {
             'the General Instruction of the Roman Missal (GIRM), or your '
             'pastor\'s and diocese\'s own instructions — always follow those '
             'where this app and local practice differ.',
+          ),
+          SizedBox(height: 20),
+          Text('No warranty', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+          SizedBox(height: 6),
+          Text(
+            'SACRISTAN is provided free of charge and as-is, with no '
+            'warranty of any kind. It\'s built and maintained by one person, '
+            'not a formal organization, and while care has gone into '
+            'getting the liturgical calendar and other details right, '
+            'always double-check anything time-sensitive or feast-specific '
+            'against your parish\'s own calendar and your pastor\'s '
+            'instructions before relying on it.',
           ),
           SizedBox(height: 20),
           Text('Attribution', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),

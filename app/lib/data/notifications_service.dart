@@ -39,10 +39,37 @@ class NotificationsService {
   Future<void> init() async {
     if (_initialized) return;
     tzdata.initializeTimeZones();
-    // Falls back to UTC if the platform's local zone can't be read; a
-    // reminder still fires, just anchored to UTC rather than the device's
-    // zone in that edge case. Wiring `flutter_timezone` to read the real
-    // device zone is a small follow-up if that matters for your parish.
+    // Round 11: this used to be commented as a "falls back to UTC if the
+    // platform's local zone can't be read" — that was wrong on two counts:
+    // there was never any attempt to read the real device zone (nothing
+    // here calls `flutter_timezone` or any platform channel), and, more
+    // importantly, that framing implied a real-world risk that isn't
+    // there. `tz.local` is only consulted by `TZDateTime.from()` (used
+    // below in `scheduleReminder`) to compute the *display* time zone
+    // label/offset of the resulting object — NOT the absolute instant it
+    // schedules. `TZDateTime.from(other, location)`'s own implementation
+    // (package:timezone, lib/src/date_time.dart) is `this._(
+    // _toNative(other).toUtc(), location, ...)`: the underlying instant
+    // comes from calling `.toUtc()` on `other` directly, which uses
+    // Dart's own (OS-backed) notion of the device's real local zone —
+    // completely independent of whatever `location` is passed in here.
+    // Since every `triggerAt` this app schedules is built as a plain
+    // `DateTime(year, month, day, hour, minute)` from date/time pickers
+    // (see reminders_screen.dart) — i.e. already a wall-clock value in
+    // the device's actual system zone — hardcoding `tz.local` to UTC
+    // does not shift when reminders actually fire; it would only matter
+    // if this file ever read back a scheduled TZDateTime's `.hour`/
+    // `.minute`/zone name for display, which it doesn't (the Reminders
+    // screen displays the plain `DateTime` stored in the database, not
+    // anything derived from `tz.local`). Verified by reading the
+    // `timezone` package's source rather than assumed — see the round-11
+    // entry in docs/ARCHITECTURE.md for the full reasoning. Kept as a
+    // real `Location` object (rather than removed) because
+    // `TZDateTime.from()` requires one; UTC is as good as any fixed
+    // choice here. Wiring `flutter_timezone` to read the real device
+    // zone would only become worth doing if a future feature needs
+    // *displayed* zone-aware timestamps (it is not needed for correct
+    // firing times).
     tz.setLocalLocation(tz.getLocation('UTC'));
 
     if (!supportsNativeNotifications) {

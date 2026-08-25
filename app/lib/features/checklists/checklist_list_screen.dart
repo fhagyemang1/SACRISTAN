@@ -12,8 +12,27 @@ import 'checklist_detail_screen.dart';
 /// large parish), each tracked independently via [MassRepository] and
 /// [ChecklistRepository.findOrCreateInstance] so progress is never
 /// silently duplicated or lost.
-class ChecklistListScreen extends StatelessWidget {
+class ChecklistListScreen extends StatefulWidget {
   const ChecklistListScreen({super.key});
+
+  @override
+  State<ChecklistListScreen> createState() => _ChecklistListScreenState();
+}
+
+class _ChecklistListScreenState extends State<ChecklistListScreen> {
+  // Round 11: guards against a real duplication bug. `_openTemplate` below
+  // does up to three sequential `await`s (todaysMasses lookup, possibly
+  // creating today's first Mass of this type, then findOrCreateInstance)
+  // before it ever navigates away from this list — and nothing disabled
+  // the `ListTile` in between. A sacristan double-tapping a checklist
+  // template (an easy, common thing to do while hurrying before Mass)
+  // could have both taps see `todaysMasses.isEmpty` as still true and
+  // both call `massRepo.create(...)`, silently creating two separate
+  // "Mass" rows for the same day/type — each then getting its own
+  // independently-progressing checklist instance. The list's own doc
+  // comment above already claimed progress is "never silently
+  // duplicated" before this fix made that actually true.
+  bool _opening = false;
 
   static const _groupOrder = [
     MassType.sunday,
@@ -80,7 +99,12 @@ class ChecklistListScreen extends StatelessWidget {
                             subtitle: Text(
                                 t.phase == 'pre' ? loc.beforeMass : loc.afterMass),
                             trailing: const Icon(Icons.chevron_right),
-                            onTap: () => _openTemplate(context, massRepo, checklistRepo, type, t),
+                            // `_opening` guard (see the class-level comment)
+                            // — ignore taps while a prior tap's Mass/
+                            // instance lookup-or-create is still in flight.
+                            onTap: _opening
+                                ? null
+                                : () => _openTemplate(context, massRepo, checklistRepo, type, t),
                           ),
                         ))
                     .toList(),
@@ -94,31 +118,42 @@ class ChecklistListScreen extends StatelessWidget {
 
   Future<void> _openTemplate(BuildContext context, MassRepository massRepo,
       ChecklistRepository checklistRepo, MassType type, ChecklistTemplate t) async {
-    final todaysMasses = await massRepo.todaysMasses(type);
-    if (!context.mounted) return;
+    setState(() => _opening = true);
+    try {
+      final todaysMasses = await massRepo.todaysMasses(type);
+      if (!context.mounted) return;
 
-    String? massId;
-    if (todaysMasses.isEmpty) {
-      // Nothing to choose between yet — create today's first Mass of this
-      // type with a sensible default label and go straight in, so a
-      // single-Mass parish never sees an extra tap for the common case.
-      massId = await massRepo.create(type, t.name.replaceAll(RegExp(r' — .*'), ''));
-    } else if (todaysMasses.length == 1) {
-      massId = todaysMasses.first.id;
-    } else {
-      massId = await _pickMass(context, massRepo, type, todaysMasses);
-      if (massId == null) return; // user cancelled
-    }
+      String? massId;
+      if (todaysMasses.isEmpty) {
+        // Nothing to choose between yet — create today's first Mass of this
+        // type with a sensible default label and go straight in, so a
+        // single-Mass parish never sees an extra tap for the common case.
+        massId = await massRepo.create(type, t.name.replaceAll(RegExp(r' — .*'), ''));
+      } else if (todaysMasses.length == 1) {
+        massId = todaysMasses.first.id;
+      } else {
+        massId = await _pickMass(context, massRepo, type, todaysMasses);
+        if (massId == null) return; // user cancelled
+      }
 
-    final instanceId = await checklistRepo.findOrCreateInstance(massId, t.id);
-    if (context.mounted) {
-      Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => ChecklistDetailScreen(
-          instanceId: instanceId,
-          templateId: t.id,
-          title: t.name,
-        ),
-      ));
+      final instanceId = await checklistRepo.findOrCreateInstance(massId, t.id);
+      if (context.mounted) {
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => ChecklistDetailScreen(
+            instanceId: instanceId,
+            templateId: t.id,
+            title: t.name,
+          ),
+        ));
+      }
+    } finally {
+      // Re-enable the list whether this run succeeded, the user cancelled
+      // the "which Mass?" picker, or (in the `else` branches above) we
+      // returned early — every path above passes through here. Guarded on
+      // `mounted` (the State's own flag, not the possibly-stale local
+      // `context` parameter) since the whole screen could have been popped
+      // while `_openTemplate` was still awaiting.
+      if (mounted) setState(() => _opening = false);
     }
   }
 

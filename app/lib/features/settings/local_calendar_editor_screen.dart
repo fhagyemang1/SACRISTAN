@@ -97,6 +97,11 @@ class LocalCalendarEditorScreen extends StatelessWidget {
     var day = 1;
     var rank = CelebrationRank.memorial;
     var color = LiturgicalColor.white;
+    // Round 11: see the identical guard elsewhere (reminders_screen.dart,
+    // inventory_screen.dart, etc.) — prevents a double-tap on "Add" from
+    // creating two local-calendar-entry rows before the first `await`
+    // completes.
+    var submitting = false;
 
     await showDialog<void>(
       context: context,
@@ -129,16 +134,48 @@ class LocalCalendarEditorScreen extends StatelessWidget {
                             12,
                             (i) => DropdownMenuItem(
                                 value: i + 1, child: Text(_monthName(i + 1)))),
-                        onChanged: (v) => setState(() => month = v ?? month),
+                        onChanged: (v) => setState(() {
+                          if (v == null) return;
+                          month = v;
+                          // Round 11 fix: the Day dropdown below used to
+                          // always offer 1-31 regardless of month, with no
+                          // validation anywhere (the repository/database
+                          // accept any int). That let an admin save an
+                          // entry like "April 31" or "February 30" — it
+                          // would insert without error, then silently
+                          // never appear on the Dashboard or Calendar on
+                          // any real date, ever, directly contradicting
+                          // this screen's own promise that an added entry
+                          // "will show up ... automatically, every year."
+                          // Clamping here (and filtering the Day dropdown
+                          // below to the selected month's real length)
+                          // makes an invalid date impossible to select in
+                          // the first place, rather than merely rejecting
+                          // it on submit.
+                          final maxDay = _daysInMonth[month - 1];
+                          if (day > maxDay) day = maxDay;
+                        }),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<int>(
+                        // Keyed on `month`: `DropdownButtonFormField`'s
+                        // `initialValue` (like other Form fields) is only
+                        // consulted on this widget's first build, not on
+                        // every rebuild — so clamping `day` above wouldn't,
+                        // by itself, update what's visibly selected here
+                        // once the user has already interacted with this
+                        // dropdown once. A `ValueKey` on `month` forces
+                        // Flutter to treat this as a brand-new widget
+                        // instance whenever the month changes, so the
+                        // freshly-clamped `day` and the freshly-filtered
+                        // item list are both picked up correctly.
+                        key: ValueKey(month),
                         initialValue: day,
                         decoration: const InputDecoration(labelText: 'Day'),
                         items: List.generate(
-                            31,
+                            _daysInMonth[month - 1],
                             (i) => DropdownMenuItem(
                                 value: i + 1, child: Text('${i + 1}'))),
                         onChanged: (v) => setState(() => day = v ?? day),
@@ -178,19 +215,27 @@ class LocalCalendarEditorScreen extends StatelessWidget {
               child: const Text('Cancel'),
             ),
             FilledButton(
-              onPressed: () async {
-                if (nameCtrl.text.trim().isEmpty) return;
-                await repo.addLocalEntry(
-                  month: month,
-                  day: day,
-                  name: nameCtrl.text.trim(),
-                  latinName:
-                      latinCtrl.text.trim().isEmpty ? null : latinCtrl.text.trim(),
-                  rank: rank,
-                  color: color,
-                );
-                if (context.mounted) Navigator.of(context).pop();
-              },
+              onPressed: submitting
+                  ? null
+                  : () async {
+                      if (nameCtrl.text.trim().isEmpty) return;
+                      setState(() => submitting = true);
+                      try {
+                        await repo.addLocalEntry(
+                          month: month,
+                          day: day,
+                          name: nameCtrl.text.trim(),
+                          latinName: latinCtrl.text.trim().isEmpty
+                              ? null
+                              : latinCtrl.text.trim(),
+                          rank: rank,
+                          color: color,
+                        );
+                        if (context.mounted) Navigator.of(context).pop();
+                      } finally {
+                        if (context.mounted) setState(() => submitting = false);
+                      }
+                    },
               child: const Text('Add'),
             ),
           ],
@@ -205,3 +250,11 @@ const _months = [
   'September', 'October', 'November', 'December'
 ];
 String _monthName(int m) => _months[m - 1];
+
+/// Feb is given 29 (not 28) deliberately: a parish entering a genuine
+/// Feb-29 observance (rare, but real) should still be able to pick it —
+/// the calendar engine already handles a Feb-29 local entry correctly by
+/// simply never matching it in a non-leap year, the same way any other
+/// date-matching works. Every other month's real day count is used as-is
+/// so no invalid date (Feb 30, Apr 31, ...) can be selected at all.
+const _daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];

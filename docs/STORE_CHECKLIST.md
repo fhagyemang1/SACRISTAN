@@ -7,23 +7,44 @@ Status legend: ✅ done in this delivery · 🔲 remaining before submission
 - ✅ Privacy policy text drafted (below) — true for the offline-only build:
   no personal data collected, no network requests made.
 - ✅ In-app "About & Attribution" screen (Settings → About & Attribution).
-- 🔲 Host the privacy policy at a stable public URL (both stores require a
-  URL, not just in-app text). A single static page with the text below is
-  enough — no server logic needed.
-- 🔲 Final app icon (replace the placeholder at
-  `app/assets/reference/app_icon_source.png`, then re-run
-  `dart run flutter_launcher_icons`).
-- 🔲 Screenshots per store's current size requirements (sizes below are a
-  snapshot — **re-verify against each store's current published specs
-  before submitting**, as these change):
-  - Apple App Store: at minimum, 6.7" iPhone (1290×2796) and 12.9" iPad
-    (2048×2732) screenshot sets; App Store Connect will list the current
-    required set when you create the listing.
-  - Google Play: at minimum a phone screenshot set (16:9 or 9:16, ≥320px
-    on the short side) plus a feature graphic (1024×500).
-- 🔲 App description copy (draft below) — review for your parish/diocese's
-  actual distribution scope before publishing.
-- 🔲 Support URL / contact email for both listings.
+- ✅ Privacy policy hosted at a stable public URL (round 13 — published as
+  a standalone page; ask the project for the current link).
+- ✅ Final app icon in place at `app/assets/reference/app_icon_source.png`
+  and regenerated for every platform (round 13, built from the user's own
+  logo artwork — see `docs/ARCHITECTURE.md` §4 round 13; also fixed a
+  pre-existing `ios: true` config bug the regeneration run surfaced).
+- ✅ Google Play phone screenshots captured (round 13) — 5 screens (Today
+  dashboard, a checklist in progress, Inventory, the Reference Library,
+  and the Parish/Diocesan Calendar), verified against Google's current
+  published spec (checked live, not from a stale snapshot): clears the
+  320px hard minimum comfortably, though at 720×1612 they're below the
+  1080px+ Google recommends for eligibility toward premium promotional
+  placement — check the phone's native Screenshots folder for
+  higher-resolution originals if that matters to you; not required to
+  publish.
+- ✅ Feature graphic built (round 13):
+  `store_assets/feature_graphic.png`, exactly 1024×500, 24-bit PNG with
+  no alpha channel, matching Google's spec exactly. Built from the same
+  brand system as the icon/privacy/support pages (the app's own emblem,
+  seed maroon, Fraunces/Public Sans) rather than a generic template — see
+  `docs/ARCHITECTURE.md` §4 round 13 for how it was built.
+- 🔲 Apple App Store screenshots: not pursued (iOS testing deliberately
+  dropped this round, no Mac available) — at minimum, 6.7" iPhone
+  (1290×2796) and 12.9" iPad (2048×2732) sets would be needed if iOS is
+  revisited later; **re-verify against Apple's current published specs
+  at that time**, as these change.
+- ✅ App description copy (draft below) reviewed against the actual shipped
+  feature set (round 13) — every Mass type, the "customizable checklists"
+  claim, offline/no-data-collection claims, and the reference library all
+  checked against the real code, not just proofread. No changes needed;
+  the copy is already fully generic (no named parish/diocese), so it
+  works regardless of distribution scope.
+- ✅ Developer/publisher name for both listings: **Meye Catholic Asoreba**
+  (the user's own name, confirmed round 13 — use this when creating the
+  Play Console and Microsoft Partner Center developer accounts).
+- ✅ Support URL for both listings (round 13 — hosted alongside the privacy
+  policy as a standalone page, with a short FAQ; ask the project for the
+  current link).
 - 🔲 Confirm current minimum OS versions against Apple's and Google's
   published requirements at build time (these change roughly yearly) and
   set `minSdkVersion` (Android) / deployment target (iOS) accordingly.
@@ -55,9 +76,14 @@ Status legend: ✅ done in this delivery · 🔲 remaining before submission
 
 - 🔲 Code-signing certificate for the installer, if distributing outside a
   store (recommended — unsigned installers trigger SmartScreen warnings).
-- 🔲 Package with an installer tool (Inno Setup, WiX, or `flutter build
-  windows` + a simple Inno Setup script) — not a store requirement, so this
-  can ship on your own timeline.
+  The installer script below documents how to plug one in once you have
+  one; not required to distribute the app in the meantime.
+- ✅ Installer built and verified (round 13): `installer/sacristan.iss`
+  (Inno Setup) compiles cleanly and the resulting
+  `SACRISTAN-Setup-1.0.0.exe` has been installed and launched successfully
+  on the user's own machine — Start Menu entry, no admin rights needed.
+  See the comments at the top of that file for how to rebuild it after
+  future code changes (needs Inno Setup installed once, free).
 - 🔲 *(Stretch goal, not required)* Microsoft Store packaging via MSIX:
   add the `msix` pub package, configure `msix_config` in `app/pubspec.yaml`,
   run `dart run msix:create`. Low marginal cost once the Windows build
@@ -155,3 +181,7 @@ verified so far, and what's left before calling it done. See
 > published, endorsed, or reviewed by the Vatican, a diocese, or any
 > parish, and it is not a substitute for the Roman Missal, the GIRM, or
 > your pastor's and diocese's own instructions.
+>
+> SACRISTAN is free and provided as-is, with no warranty of any kind.
+> Always double-check anything time-sensitive or feast-specific against
+> your parish's own calendar and your pastor's instructions.

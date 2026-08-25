@@ -83,7 +83,8 @@ class _ContactsTab extends StatelessWidget {
                       IconButton(
                         icon: const Icon(Icons.sms_outlined),
                         tooltip: 'Text this contact',
-                        onPressed: () => openSmsComposer(phone: c.phone),
+                        onPressed: () =>
+                            openSmsComposerWithFeedback(context, phone: c.phone),
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete_outline),
@@ -110,6 +111,11 @@ class _ContactsTab extends StatelessWidget {
     final nameCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
     var role = ContactRole.sacristan;
+    // Round 11: see the identical guard in reminders_screen.dart /
+    // inventory_screen.dart / profiles_screen.dart — prevents a
+    // double-tap on "Add" from creating two contact rows before the
+    // first tap's `await repo.add(...)` completes and pops this dialog.
+    var submitting = false;
     await showDialog<void>(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -143,11 +149,21 @@ class _ContactsTab extends StatelessWidget {
             TextButton(
                 onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
             FilledButton(
-              onPressed: () async {
-                if (nameCtrl.text.trim().isEmpty || phoneCtrl.text.trim().isEmpty) return;
-                await repo.add(role, nameCtrl.text.trim(), phoneCtrl.text.trim());
-                if (context.mounted) Navigator.of(context).pop();
-              },
+              onPressed: submitting
+                  ? null
+                  : () async {
+                      if (nameCtrl.text.trim().isEmpty || phoneCtrl.text.trim().isEmpty) {
+                        return;
+                      }
+                      setState(() => submitting = true);
+                      try {
+                        await repo.add(
+                            role, nameCtrl.text.trim(), phoneCtrl.text.trim());
+                        if (context.mounted) Navigator.of(context).pop();
+                      } finally {
+                        if (context.mounted) setState(() => submitting = false);
+                      }
+                    },
               child: const Text('Add'),
             ),
           ],
@@ -200,7 +216,8 @@ class _SuppliersTab extends StatelessWidget {
                         IconButton(
                           icon: const Icon(Icons.sms_outlined),
                           tooltip: 'Text an order to this supplier',
-                          onPressed: () => openSmsComposer(
+                          onPressed: () => openSmsComposerWithFeedback(
+                            context,
                             phone: s.phone!,
                             body: 'Hello — placing a supply order from our parish. ',
                           ),
@@ -230,45 +247,63 @@ class _SuppliersTab extends StatelessWidget {
     final nameCtrl = TextEditingController();
     final contactCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
+    // Round 11: same double-tap-creates-a-duplicate-row guard as the
+    // contacts dialog above — needs the dialog wrapped in a
+    // `StatefulBuilder` (this one previously had no local mutable state
+    // at all) so the button can rebuild itself disabled while submitting.
+    var submitting = false;
     await showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add supplier'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameCtrl,
-              decoration: const InputDecoration(labelText: 'Supplier name'),
-              autofocus: true,
-            ),
-            TextField(
-              controller: contactCtrl,
-              decoration: const InputDecoration(labelText: 'Contact person (optional)'),
-            ),
-            TextField(
-              controller: phoneCtrl,
-              decoration: const InputDecoration(labelText: 'Phone number (optional)'),
-              keyboardType: TextInputType.phone,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Add supplier'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(labelText: 'Supplier name'),
+                autofocus: true,
+              ),
+              TextField(
+                controller: contactCtrl,
+                decoration: const InputDecoration(labelText: 'Contact person (optional)'),
+              ),
+              TextField(
+                controller: phoneCtrl,
+                decoration: const InputDecoration(labelText: 'Phone number (optional)'),
+                keyboardType: TextInputType.phone,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: submitting
+                  ? null
+                  : () async {
+                      if (nameCtrl.text.trim().isEmpty) return;
+                      setState(() => submitting = true);
+                      try {
+                        await repo.add(
+                          nameCtrl.text.trim(),
+                          contactName: contactCtrl.text.trim().isEmpty
+                              ? null
+                              : contactCtrl.text.trim(),
+                          phone: phoneCtrl.text.trim().isEmpty
+                              ? null
+                              : phoneCtrl.text.trim(),
+                        );
+                        if (context.mounted) Navigator.of(context).pop();
+                      } finally {
+                        if (context.mounted) setState(() => submitting = false);
+                      }
+                    },
+              child: const Text('Add'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () async {
-              if (nameCtrl.text.trim().isEmpty) return;
-              await repo.add(
-                nameCtrl.text.trim(),
-                contactName: contactCtrl.text.trim().isEmpty ? null : contactCtrl.text.trim(),
-                phone: phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim(),
-              );
-              if (context.mounted) Navigator.of(context).pop();
-            },
-            child: const Text('Add'),
-          ),
-        ],
       ),
     );
   }

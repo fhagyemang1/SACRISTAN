@@ -76,53 +76,69 @@ class _ReferenceScreenState extends State<ReferenceScreen>
     final titleCtrl = TextEditingController();
     final bodyCtrl = TextEditingController();
     final sourceCtrl = TextEditingController();
+    // Round 11: same double-tap-creates-a-duplicate-row guard used
+    // throughout the app's other "Add" dialogs — needs a `StatefulBuilder`
+    // (this dialog previously had no local mutable state) so the button
+    // can rebuild itself disabled while `repo.add(...)` is in flight.
+    var submitting = false;
 
     await showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Add ${_categoryLabel(category)} entry'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleCtrl,
-                decoration: const InputDecoration(labelText: 'Title'),
-                autofocus: true,
-              ),
-              TextField(
-                controller: bodyCtrl,
-                decoration: const InputDecoration(labelText: 'Details'),
-                minLines: 2,
-                maxLines: 5,
-              ),
-              TextField(
-                controller: sourceCtrl,
-                decoration: const InputDecoration(
-                    labelText: 'Source (e.g. "Parish tradition", "Diocesan guidance")'),
-              ),
-            ],
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text('Add ${_categoryLabel(category)} entry'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleCtrl,
+                  decoration: const InputDecoration(labelText: 'Title'),
+                  autofocus: true,
+                ),
+                TextField(
+                  controller: bodyCtrl,
+                  decoration: const InputDecoration(labelText: 'Details'),
+                  minLines: 2,
+                  maxLines: 5,
+                ),
+                TextField(
+                  controller: sourceCtrl,
+                  decoration: const InputDecoration(
+                      labelText: 'Source (e.g. "Parish tradition", "Diocesan guidance")'),
+                ),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: submitting
+                  ? null
+                  : () async {
+                      if (titleCtrl.text.trim().isEmpty || bodyCtrl.text.trim().isEmpty) {
+                        return;
+                      }
+                      setState(() => submitting = true);
+                      try {
+                        await repo.add(
+                          category: category,
+                          title: titleCtrl.text.trim(),
+                          bodyMarkdown: bodyCtrl.text.trim(),
+                          sourceCitation: sourceCtrl.text.trim().isEmpty
+                              ? 'Parish-added entry'
+                              : sourceCtrl.text.trim(),
+                        );
+                        if (context.mounted) Navigator.of(context).pop();
+                      } finally {
+                        if (context.mounted) setState(() => submitting = false);
+                      }
+                    },
+              child: const Text('Add'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () async {
-              if (titleCtrl.text.trim().isEmpty || bodyCtrl.text.trim().isEmpty) return;
-              await repo.add(
-                category: category,
-                title: titleCtrl.text.trim(),
-                bodyMarkdown: bodyCtrl.text.trim(),
-                sourceCitation: sourceCtrl.text.trim().isEmpty
-                    ? 'Parish-added entry'
-                    : sourceCtrl.text.trim(),
-              );
-              if (context.mounted) Navigator.of(context).pop();
-            },
-            child: const Text('Add'),
-          ),
-        ],
       ),
     );
   }

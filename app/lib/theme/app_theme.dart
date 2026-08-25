@@ -26,14 +26,33 @@ class AppTheme {
       // Bump contrast beyond Material's default tonal palette.
       contrastLevel: 0.5,
     );
+    // Round 12: this used to be
+    //   Typography.material2021(platform: TargetPlatform.android)
+    //       .black
+    //       .apply(fontSizeFactor: 1.05)
+    // which crashed the app on first launch on every real device (a "red
+    // screen of death" at startup, before a single screen ever rendered) —
+    // no CI check or widget test ever exercised `AppTheme.light()`/`.dark()`
+    // directly, so this was invisible until someone actually ran the app.
+    // `Typography.material2021(...).black` (and `.white`) is deliberately
+    // *color-only*: every one of its 15 TextStyle fields sets color but
+    // leaves `fontSize` null (see the doc comment on `Typography.black` in
+    // the Flutter SDK — geometry is meant to be merged in separately,
+    // normally by `ThemeData.localize()` once a `MaterialApp` knows the
+    // active `MaterialLocalizations.scriptCategory`). `TextStyle.apply()`
+    // asserts that `fontSize` is non-null whenever a non-1.0 fontSizeFactor
+    // is given, so calling `.apply(fontSizeFactor: 1.05)` straight on
+    // `.black` tripped that assertion on all 15 fields immediately.
+    // Fix: explicitly merge in the matching geometry TextTheme
+    // (`.englishLike`, which does set every fontSize) before scaling.
+    final typography = Typography.material2021(platform: TargetPlatform.android);
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
       brightness: brightness,
       visualDensity: VisualDensity.standard,
-      textTheme: Typography.material2021(platform: TargetPlatform.android)
-          .black
-          .apply(fontSizeFactor: 1.05),
+      textTheme:
+          typography.black.merge(typography.englishLike).apply(fontSizeFactor: 1.05),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           minimumSize: const Size(minTouchTarget, minTouchTarget),

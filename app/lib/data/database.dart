@@ -246,6 +246,23 @@ class AppSettings extends Table {
 class SacristanDatabase extends _$SacristanDatabase {
   SacristanDatabase() : super(_openConnection());
 
+  // Round 11: test-only constructor. Lets tests open this database
+  // against an in-memory executor (e.g. `NativeDatabase.memory()`)
+  // instead of the real on-device file `_openConnection()` always uses —
+  // the latter calls `getApplicationDocumentsDirectory()`, which needs a
+  // platform channel no plain `flutter test` run provides. Added
+  // specifically so `test/data/checklist_instance_race_test.dart` can
+  // exercise `ChecklistRepository.findOrCreateInstance`'s locking against
+  // a real (if temporary) drift database rather than only reasoning
+  // about it. Not annotated `@visibleForTesting` deliberately — that
+  // annotation lives in `package:meta`, which this file doesn't otherwise
+  // depend on directly, and adding an import for a package not listed in
+  // pubspec.yaml risks a `depend_on_referenced_packages` lint this round
+  // has no compiler available to check against (see round 9's whole
+  // saga on trusting `flutter analyze` over guesses). A plain, clearly
+  // worded doc comment costs nothing and carries the same intent.
+  SacristanDatabase.forTesting(super.executor);
+
   /// Bump this and add a migration step in [migration] whenever a table or
   /// column changes. Kept independent from the bundled liturgical-calendar
   /// dataset version (that one lives in the `liturgical_calendar` package

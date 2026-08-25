@@ -22,6 +22,16 @@ class _AdminPinScreenState extends State<AdminPinScreen> {
   String? _error;
   Profile? _adminProfile;
   bool _loading = true;
+  // Round 11: guards the "Set PIN and unlock" button below against a
+  // double-tap. That handler does two sequential `await`s (creating the
+  // one-and-only admin `Profile` via `profileRepo.addProfile(...)`, then
+  // `profileRepo.setPin(...)`) before it pops this screen — with nothing
+  // previously stopping a second tap, in that window, from also seeing
+  // `_adminProfile == null` and creating a *second* "Parish Admin"
+  // profile with its own separate PIN. This is the very first screen a
+  // fresh install's admin sees, which is exactly when an eager double-tap
+  // is likely.
+  bool _submitting = false;
 
   @override
   void initState() {
@@ -104,7 +114,9 @@ class _AdminPinScreenState extends State<AdminPinScreen> {
                       ),
                     const SizedBox(height: 16),
                     FilledButton(
-                      onPressed: () async {
+                      onPressed: _submitting
+                          ? null
+                          : () async {
                         if (_pinCtrl.text.length < 4) {
                           setState(() => _error = 'PIN must be at least 4 digits.');
                           return;
@@ -113,31 +125,41 @@ class _AdminPinScreenState extends State<AdminPinScreen> {
                           setState(() => _error = 'PINs do not match.');
                           return;
                         }
-                        var profile = _adminProfile;
-                        // Wrapped in explicit parens `(() async {...})()` —
-                        // an immediately-invoked function expression needs
-                        // that outer grouping in Dart, unlike JS, to parse
-                        // unambiguously as "call this literal now" rather
-                        // than a bare function-typed value.
-                        profile ??= await (() async {
-                          // `context.read` must happen before the `await`
-                          // below, not after — using a `BuildContext`
-                          // across an async gap risks it having been
-                          // unmounted in between (round 9's
-                          // `use_build_context_synchronously` lint).
-                          // `db` doesn't depend on `id`, so hoisting this
-                          // line up is a free fix, not a workaround.
-                          final db = context.read<SacristanDatabase>();
-                          final id = await profileRepo.addProfile(
-                              'Parish Admin', ProfileRole.admin);
-                          return (db.select(db.profiles)
-                                ..where((p) => p.id.equals(id)))
-                              .getSingle();
-                        })();
-                        await profileRepo.setPin(profile.id, _pinCtrl.text);
-                        _adminProfile = profile; // keep _hasPin correct if we don't pop
-                        session.unlock();
-                        if (context.mounted) Navigator.of(context).pop();
+                        setState(() => _submitting = true);
+                        try {
+                          var profile = _adminProfile;
+                          // Wrapped in explicit parens `(() async {...})()` —
+                          // an immediately-invoked function expression needs
+                          // that outer grouping in Dart, unlike JS, to parse
+                          // unambiguously as "call this literal now" rather
+                          // than a bare function-typed value.
+                          profile ??= await (() async {
+                            // `context.read` must happen before the `await`
+                            // below, not after — using a `BuildContext`
+                            // across an async gap risks it having been
+                            // unmounted in between (round 9's
+                            // `use_build_context_synchronously` lint).
+                            // `db` doesn't depend on `id`, so hoisting this
+                            // line up is a free fix, not a workaround.
+                            final db = context.read<SacristanDatabase>();
+                            final id = await profileRepo.addProfile(
+                                'Parish Admin', ProfileRole.admin);
+                            return (db.select(db.profiles)
+                                  ..where((p) => p.id.equals(id)))
+                                .getSingle();
+                          })();
+                          await profileRepo.setPin(profile.id, _pinCtrl.text);
+                          _adminProfile = profile; // keep _hasPin correct if we don't pop
+                          session.unlock();
+                          if (context.mounted) Navigator.of(context).pop();
+                        } finally {
+                          // See the `_submitting` field doc: re-enables the
+                          // button if we didn't pop (e.g. an exception) —
+                          // if we did pop, this screen is gone and the
+                          // `mounted` check below just makes the no-op
+                          // setState safe either way.
+                          if (mounted) setState(() => _submitting = false);
+                        }
                       },
                       child: const Text('Set PIN and unlock'),
                     ),

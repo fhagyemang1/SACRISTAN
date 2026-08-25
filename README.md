@@ -11,11 +11,16 @@ layer, dashboard, calendar-detail, checklist screens (now with multi-Mass
 support), local calendar editor, admin PIN gate, inventory edit/delete +
 CSV export, contacts/suppliers with SMS deep-links, local
 reminders/notifications, a DB-backed and admin-editable reference library,
-and a working language picker are all implemented and functional against
-the local database. Windows notification toasts, and reminders'
-repeat-rule ('weekly'/'yearly') option, are known gaps — stored in the
-schema but not wired up end to end (see `docs/ARCHITECTURE.md` §4,
-rounds 2 and 10). See that section for the full round-by-round
+a working language picker, and (new in round 11) an admin-gated Checklist
+Template Editor — add templates, add/delete/reorder their items — are all
+implemented and functional against the local database. Windows notification toasts, reminders'
+repeat-rule ('weekly'/'yearly') option, inventory's low-stock
+*threshold* (as opposed to the manual low-stock toggle, which works),
+and per-sacristan checklist attribution (`doneByProfileId`, and Sacristan
+Profiles generally beyond the one used for the admin PIN) are
+known gaps — each is stored in the schema but not wired up end to end
+(see `docs/ARCHITECTURE.md` §4, rounds 2, 10, and 11). See that section
+for the full round-by-round
 breakdown, including a real bug (`.equalsValue()`, not a real drift method)
 caught and fixed during manual review in round 3, and — in round 4's full
 line-by-line review of every screen — a genuinely user-visible bug where
@@ -50,8 +55,137 @@ launch during its ~100-row seeding loop; and reminder notifications
 derived their OS-level id from `.hashCode`, which Dart's own docs say
 isn't guaranteed stable across app restarts — meaning a "canceled"
 reminder could still fire after the app had been closed and reopened.
-Both fixed, both with new regression tests. See `docs/ARCHITECTURE.md`
-§4 ("Round 10") for the full reasoning.
+Both fixed, both with new regression tests, and **confirmed green** —
+these fixes and their tests have now actually run in CI, not just been
+reasoned through. See `docs/ARCHITECTURE.md` §4 ("Round 10") for the
+full reasoning. **Round 11** chased down one loose thread round 10 left
+open — whether hardcoding the reminders' time zone to UTC could make
+reminders fire at the wrong wall-clock time — and, by reading the
+`timezone` package's own source for `TZDateTime.from`, confirmed it's
+**not** a bug (the app already builds reminder times from the device's
+real local clock; the hardcoded zone only affects a display label
+nothing in the app reads back). It also found a second dead-schema gap
+(inventory's `lowStockThreshold` column, unused end to end — same shape
+as the reminders `repeatRule` gap), confirmed the CSV export's escaping
+is handled correctly by the `csv` package, and — the round's biggest
+find — every "Add" dialog in the app (plus the checklist-list's
+tap-to-open flow) could create a duplicate row on a rapid double-tap,
+since nothing disabled the triggering button while its `await`-based
+insert was in flight. Fixed across all nine affected screens, plus the
+underlying repository-level race in `ChecklistRepository
+.findOrCreateInstance` (now lock-protected and covered by a new test
+that opens a real, if temporary, in-memory database — the first test in
+this project to do that instead of testing pure functions only). The
+same round then found the identical race in the app's single most-used
+interaction — `ChecklistRepository.setTick`, called on every checklist
+checkbox tap — since the checkbox widget has no debounce and two fast
+taps on the same row can both fire before either write lands; a
+duplicate tick row there doesn't just create clutter, it makes every
+later tap on that item throw instead of toggling. Fixed with an
+order-preserving per-item lock (distinct from `findOrCreateInstance`'s
+fix, since two taps can carry different intended values that must both
+apply) and covered by its own new test. It also verified the pure-Dart
+calendar engine's lectionary-cycle logic against USCCB's own FAQ rather
+than assuming it (found correct, no change needed), and fixed a real UX
+gap where the SMS "text this contact" buttons failed completely
+silently on this app's Windows build (no `sms:` handler there) with no
+feedback to the user. It also closed a real, actively-misleading gap:
+two existing screens (`checklist_detail_screen.dart`'s empty-state text,
+Settings' own "Admin PIN" subtitle) had always pointed sacristans to
+"Settings > Manage Checklist Templates" — but that screen never existed;
+every template a parish could use was exactly the built-in seed, with no
+way to add, adjust, or extend it without a developer. Built the missing
+screen (`ChecklistTemplateEditorScreen` + `TemplateItemsEditorScreen`,
+wired into Settings under a new "Checklists" section), admin-gated the
+same way the Reference Library already is, and — since the new
+add/delete/reorder-item repository methods have the identical
+check-then-write shape already found and fixed twice elsewhere this
+round — serialized all three per template with the same
+chain-onto-the-previous-call lock pattern `setTick` uses, with its own
+new regression test covering the race directly. Deliberately did **not**
+add template *deletion*: `ChecklistInstances.templateId` isn't
+cascade-configured (unlike `ChecklistItems.templateId`), so deleting a
+template any Mass has used would hit a foreign-key violation —
+handling that well is a product decision left for a future round, not
+guessed at here. See `docs/ARCHITECTURE.md` §4 ("Round 11") for
+the full reasoning. Finally, found and fixed a real precedence-engine bug
+in the calendar package itself — the same class of bug round 9's CI runs
+caught twice, but this specific instance had survived every round since,
+undetected by any existing test: a fixed General Roman Calendar solemnity
+landing on a Sunday of Advent, Lent, or Easter (verified concretely: the
+Immaculate Conception, Dec 8, falls on the Second Sunday of Advent in
+2024 and 2030) could incorrectly outrank that Sunday as the day's primary
+celebration, backwards from the Missal's own precedence rules and from
+actual Church practice. Fixed with a new regression test covering both
+years. Also found, but deliberately left undecided (a product question,
+not a bug): `ChecklistTicks.doneByProfileId` — meant to record which
+sacristan checked an item off — is never actually set to anything but
+`null`, because nothing in the app lets a sacristan identify themselves
+before checking items off; pulling on that thread, Sacristan Profiles
+(other than the one used for the admin PIN) turn out to be stored but
+never read anywhere else in the app. See `docs/ARCHITECTURE.md` §4 for
+the reasoning. Last, found and fixed a real silent-data-loss-shaped bug:
+the Parish/Diocesan Calendar editor's "Add entry" dialog let you pick a
+Day (1-31) independent of the selected Month, with zero validation
+anywhere — so saving, say, "February 31" succeeded silently, and that
+entry would then never appear on the Dashboard or Calendar on any real
+date, ever. Fixed by filtering the Day dropdown to the selected month's
+real length and clamping an already-selected day down when the month
+changes to one that's too short for it, with a new widget test (this
+project's first to exercise a real dialog against a real, if temporary,
+database) proving the clamp actually happens and only a real date gets
+saved. None of round 11's fixes have been through a real CI run yet (the
+last confirmed-green run was round 10's) — that's the next step,
+followed by the real device/emulator smoke test this project has never
+had.
+
+**Round 12: the app ran on a real device for the first time — and crashed
+on launch.** The user, new to Flutter, was walked through installing the
+whole toolchain from scratch (Flutter SDK, Visual Studio's C++ desktop
+workload, Windows Developer Mode for plugin symlink support) and running
+`flutter run -d windows`. Twelve rounds and a green CI pipeline in, this
+was the very first time SACRISTAN had ever actually executed — and it hit
+a "red screen of death" before a single screen rendered: `AppTheme.light()`
+/`.dark()` built its `textTheme` by calling `.apply(fontSizeFactor: 1.05)`
+directly on `Typography.material2021(...).black`, which — confirmed by
+reading Flutter's own SDK source rather than guessing — is a deliberately
+*color-only* theme with no `fontSize` set on any of its 15 text styles;
+`TextStyle.apply()` asserts `fontSize != null` whenever scaling by
+anything other than 1.0, so this failed on every single field, on every
+platform, every time. No round before this one had a compiler at all
+(rounds 1-7), and CI (rounds 8-11) only ever ran static analysis and pure
+unit tests — nothing had rendered a widget tree under the app's real theme
+until now. **Fixed** by explicitly merging in the matching font-geometry
+theme (`.merge(typography.englishLike)`) before scaling, and added
+`app/test/theme/app_theme_builds_without_crashing_test.dart` — this
+project's first test to actually pump a `MaterialApp` under
+`AppTheme.light()`/`.dark()` and assert nothing throws. Also: this repo
+had never had a `windows/` platform folder committed (nothing before this
+round had a working `flutter` toolchain to generate one with), so
+`flutter create --platforms=windows .` had to be run once first — not a
+code bug, just a missing setup step, now documented so a fresh clone
+doesn't hit the same confusing "No windows desktop project configured"
+error blind. With the crash fixed, the app now genuinely launches and
+renders on a real Windows machine.
+
+**The same round then went on to a real Android phone too, over USB —
+and SACRISTAN now runs on both of its testable platforms for the first
+time.** Along the way: the same missing-platform-folder issue as Windows
+(no one had ever run `flutter create --platforms=android .` either, same
+root cause, same fix); a genuinely new Android SDK tool transition
+(Google replacing `sdkmanager` with a new `android` CLI) that Flutter
+3.47.0 hasn't fully caught up with yet, worked around by writing the
+standard license-acceptance hash files directly (the same trick CI
+systems use); Gradle's NDK auto-download crashing outright on this
+machine, fixed by pinning `ndkVersion` in `android/app/build.gradle.kts`
+to a version already installed rather than the one Flutter defaults to;
+and one real, permanent, non-environmental fix — `flutter_local_notifications`
+requires "core library desugaring," a genuine documented Android
+requirement never triggered before because this was the project's first
+real Android build. See `docs/ARCHITECTURE.md` §4 ("Round 12") for the
+full reasoning on all of it. Further screens haven't been clicked
+through by hand on either platform yet past initial launch, so that
+remains the next real step, same as it's been since round 10.
 
 ## Real compiler feedback: CI is green
 
@@ -209,31 +343,44 @@ flutter build appbundle --release
 # iOS (then open ios/Runner.xcworkspace in Xcode to archive & upload)
 flutter build ios --release
 
-# Windows installer — build the release binary, then package it with your
-# installer tool of choice (e.g. Inno Setup, MSIX via `flutter pub run
-# msix:create` if you add the `msix` package). Microsoft Store packaging via
-# MSIX is a low-cost stretch goal noted in STORE_CHECKLIST.md.
+# Windows installer — build the release binary, then compile
+# installer/sacristan.iss with Inno Setup (see that file's own header
+# comment for the one-time setup + build steps) to get a distributable
+# SACRISTAN-Setup-<version>.exe. Microsoft Store packaging via MSIX is a
+# separate, lower-priority stretch goal noted in STORE_CHECKLIST.md.
 flutter build windows --release
 ```
 
 ## Icons
 
-`app_icon_source.png` under `app/assets/reference/` is a simple original
-placeholder (a chalice + cross mark on the app's seed color). Regenerate
-platform icons from it with:
+`app_icon_source.png` under `app/assets/reference/` is the app's real icon
+(round 13) — a navy/gold monogram (a stylized "S" incorporating a cross,
+chalice with host, thurible, and stole) full-bleed on white, matching the
+user's original artwork. `app_icon_foreground.png` is a second,
+transparent-background layer of the same artwork, inset further so it
+isn't clipped by circular or squircle Android launcher masks —
+`pubspec.yaml`'s `flutter_launcher_icons` block points
+`adaptive_icon_foreground` at it and sets `adaptive_icon_background` to
+`#FFFFFF` to match. Regenerate every platform-specific icon file from
+these two sources with:
 
 ```bash
 cd app
 dart run flutter_launcher_icons
 ```
 
-Replace `app_icon_source.png` with your parish/organization's real icon
-before submitting to either store — see `docs/STORE_CHECKLIST.md`.
+If the icon ever changes again, replace both files (keeping the foreground
+layer's extra inset margin) and re-run the command above — see
+`docs/ARCHITECTURE.md`'s round 13 entry for why the source needed real
+image prep rather than being used as supplied.
 
 ## What remains before each store submission
 
-See `docs/STORE_CHECKLIST.md` for the full punch list (icons, screenshots,
-privacy policy text, listing copy, and store-specific gotchas).
+See `docs/STORE_CHECKLIST.md` for the full punch list. As of round 13, the
+privacy policy is drafted and hosted (published as a standalone page — ask
+in the project for the current URL) and the icon is finished; screenshots,
+listing-copy review, and both stores' paid developer-account steps remain
+open.
 
 ## License / attribution
 

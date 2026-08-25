@@ -72,6 +72,12 @@ class RemindersScreen extends StatelessWidget {
     final titleCtrl = TextEditingController();
     final bodyCtrl = TextEditingController();
     var when = DateTime.now().add(const Duration(days: 1));
+    // Round 11: guards the "Add" button below against a double-tap, which
+    // would otherwise create two separate `Reminder` rows and schedule two
+    // separate OS-level notifications for what the sacristan intended as
+    // one reminder — worse than most duplicate-row bugs, since cancelling
+    // one from the Reminders list wouldn't stop the other from firing.
+    var submitting = false;
 
     await showDialog<void>(
       context: context,
@@ -119,21 +125,32 @@ class RemindersScreen extends StatelessWidget {
             TextButton(
                 onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
             FilledButton(
-              onPressed: () async {
-                if (titleCtrl.text.trim().isEmpty) return;
-                final id = await repo.add(
-                  title: titleCtrl.text.trim(),
-                  body: bodyCtrl.text.trim().isEmpty ? null : bodyCtrl.text.trim(),
-                  triggerAt: when,
-                );
-                await NotificationsService.instance.scheduleReminder(
-                  id: id,
-                  title: titleCtrl.text.trim(),
-                  body: bodyCtrl.text.trim().isEmpty ? null : bodyCtrl.text.trim(),
-                  triggerAt: when,
-                );
-                if (context.mounted) Navigator.of(context).pop();
-              },
+              onPressed: submitting
+                  ? null
+                  : () async {
+                      if (titleCtrl.text.trim().isEmpty) return;
+                      setState(() => submitting = true);
+                      try {
+                        final id = await repo.add(
+                          title: titleCtrl.text.trim(),
+                          body: bodyCtrl.text.trim().isEmpty
+                              ? null
+                              : bodyCtrl.text.trim(),
+                          triggerAt: when,
+                        );
+                        await NotificationsService.instance.scheduleReminder(
+                          id: id,
+                          title: titleCtrl.text.trim(),
+                          body: bodyCtrl.text.trim().isEmpty
+                              ? null
+                              : bodyCtrl.text.trim(),
+                          triggerAt: when,
+                        );
+                        if (context.mounted) Navigator.of(context).pop();
+                      } finally {
+                        if (context.mounted) setState(() => submitting = false);
+                      }
+                    },
               child: const Text('Add'),
             ),
           ],
