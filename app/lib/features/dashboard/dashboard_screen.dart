@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:liturgical_calendar/liturgical_calendar.dart';
 import 'package:provider/provider.dart';
@@ -19,14 +21,71 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+// Round 12: `AppShell` hosts every tab in an `IndexedStack` (see
+// `features/common/app_shell.dart`), so this State is created once and
+// never disposed for the app's entire session — switching tabs does not
+// re-run `initState`. Without anything below, "today" was only ever
+// (re)computed at that one `initState` call and on a manual pull-to-refresh,
+// so a device left open/running past local midnight — a real scenario for
+// a sacristy desktop/tablet, or a phone just left unlocked overnight — kept
+// showing yesterday's liturgical color/rank/season indefinitely, which
+// defeats the entire point of this being the zero-tap "today" screen.
+// Two independent triggers cover the two ways that staleness actually
+// happens: `didChangeAppLifecycleState` catches resuming from the
+// background (including when the OS suspended this app's timers while
+// backgrounded, which could cause the Timer below to fire late or not at
+// all until resume) and the self-rescheduling `Timer` catches the app
+// simply staying in the foreground/running headless across midnight.
+class _DashboardScreenState extends State<DashboardScreen>
+    with WidgetsBindingObserver {
   late Future<LiturgicalDay> _today;
   late Future<List<LiturgicalDay>> _week;
+  Timer? _midnightTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _load();
+    _scheduleMidnightRefresh();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _midnightTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed && mounted) {
+      setState(_load);
+    }
+  }
+
+  /// Schedules a one-shot `Timer` for just after the next local midnight,
+  /// which reloads "today" and then reschedules itself for the midnight
+  /// after that. Deliberately a self-rescheduling one-shot rather than a
+  /// single `Timer.periodic(Duration(days: 1))`: a fixed 24-hour period
+  /// would drift off local midnight the very first time a DST transition
+  /// adds or removes an hour, whereas recomputing "next midnight" fresh
+  /// each time never can.
+  void _scheduleMidnightRefresh() {
+    final now = DateTime.now();
+    final nextMidnight = DateTime(now.year, now.month, now.day + 1);
+    // A one-second cushion so this fires just after midnight rather than
+    // racing it — firing a moment late is harmless, firing a moment early
+    // would just reload "today" as still-yesterday.
+    final delay = nextMidnight.difference(now) + const Duration(seconds: 1);
+    _midnightTimer = Timer(delay, _onMidnightTick);
+  }
+
+  void _onMidnightTick() {
+    if (!mounted) return;
+    setState(_load);
+    _scheduleMidnightRefresh();
   }
 
   void _load() {

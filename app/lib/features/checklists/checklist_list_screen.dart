@@ -124,11 +124,31 @@ class _ChecklistListScreenState extends State<ChecklistListScreen> {
       if (!context.mounted) return;
 
       String? massId;
+      String? instanceId;
       if (todaysMasses.isEmpty) {
-        // Nothing to choose between yet — create today's first Mass of this
-        // type with a sensible default label and go straight in, so a
-        // single-Mass parish never sees an extra tap for the common case.
-        massId = await massRepo.create(type, t.name.replaceAll(RegExp(r' — .*'), ''));
+        // Round 12: before assuming this is a genuinely new Mass, check for
+        // a checklist of this exact template that's still open from
+        // recently — `todaysMasses` above keys strictly off calendar date,
+        // so a checklist begun before midnight (an Easter Vigil that runs
+        // past 12:00 AM is the textbook case, but simply not finishing
+        // before the day turns over is enough) would otherwise find no
+        // Mass "today" and silently start a brand-new, blank checklist,
+        // orphaning the real one's ticks in SQLite. See
+        // `ChecklistRepository.recentIncompleteInstances` for exactly what
+        // "recent and incomplete" means, and why keying off the template
+        // (not massType) here can't collide with the multi-Mass picker
+        // below.
+        final resumable = await checklistRepo.recentIncompleteInstances(t.id);
+        if (!context.mounted) return;
+        if (resumable.isEmpty) {
+          // Nothing to resume and nothing to choose between yet — create
+          // today's first Mass of this type with a sensible default label
+          // and go straight in, so a single-Mass parish never sees an
+          // extra tap for the common case.
+          massId = await massRepo.create(type, t.name.replaceAll(RegExp(r' — .*'), ''));
+        } else {
+          instanceId = resumable.first.id;
+        }
       } else if (todaysMasses.length == 1) {
         massId = todaysMasses.first.id;
       } else {
@@ -136,11 +156,17 @@ class _ChecklistListScreenState extends State<ChecklistListScreen> {
         if (massId == null) return; // user cancelled
       }
 
-      final instanceId = await checklistRepo.findOrCreateInstance(massId, t.id);
+      // Written this way (rather than `instanceId ??= await ...`) so the
+      // value passed to `ChecklistDetailScreen` below is statically
+      // non-nullable without relying on flow-analysis promotion through a
+      // `??=` — `findOrCreateInstance` is only actually awaited when
+      // `instanceId` is still null, since `??` short-circuits.
+      final resolvedInstanceId =
+          instanceId ?? await checklistRepo.findOrCreateInstance(massId!, t.id);
       if (context.mounted) {
         Navigator.of(context).push(MaterialPageRoute(
           builder: (_) => ChecklistDetailScreen(
-            instanceId: instanceId,
+            instanceId: resolvedInstanceId,
             templateId: t.id,
             title: t.name,
           ),

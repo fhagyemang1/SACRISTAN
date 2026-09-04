@@ -93,6 +93,20 @@ class Celebration {
   /// set alongside [LiturgicalColor.white]).
   final bool goldPermitted;
 
+  /// True only for a [CelebrationRank.feast] that is a genuine "Feast of
+  /// the Lord in the General Calendar" (Table of Liturgical Days, General
+  /// Norms n. 59, tier II.5) — e.g. the Presentation of the Lord, the
+  /// Transfiguration, the Baptism of the Lord. Meaningless for any other
+  /// rank (solemnities/memorials/etc. don't need this distinction; a
+  /// solemnity already outranks every Sunday of Ordinary Time/Christmas
+  /// regardless, and nothing below feast rank ever competes with a
+  /// Sunday). Feasts of the BVM or of the Saints in the General Calendar
+  /// (tier II.7) must leave this `false` (the default) — unlike Feasts of
+  /// the Lord, they rank *below* Sundays of Ordinary Time and of the
+  /// Christmas season, per `calendar_engine.dart`'s `_tier()`. See that
+  /// function's doc comment for the concrete bug this distinction fixes.
+  final bool isFeastOfTheLord;
+
   const Celebration({
     required this.key,
     required this.name,
@@ -101,6 +115,7 @@ class Celebration {
     required this.color,
     required this.source,
     this.goldPermitted = false,
+    this.isFeastOfTheLord = false,
   });
 
   @override

@@ -284,6 +284,23 @@ class SacristanDatabase extends _$SacristanDatabase {
         //     await m.addColumn(inventoryItems, inventoryItems.syncState);
         //   }
         // },
+        //
+        // sqlite3 does NOT enforce foreign key constraints by default —
+        // it must be turned on per-connection, every time a connection is
+        // opened (it is not a persisted database setting). Without this,
+        // every `onDelete: KeyAction.cascade`/FK-restrict relationship
+        // declared on the tables above (e.g. `ChecklistTicks.itemId` ->
+        // `ChecklistItems`, `ChecklistInstances.massId` -> `Masses`) is
+        // silently inert: SQLite lets the delete through and simply
+        // leaves the dependent rows behind, orphaned, instead of
+        // cascading or blocking as the schema declares and as
+        // repositories.dart's callers rely on. `beforeOpen` runs on every
+        // connection open (fresh install and every subsequent launch),
+        // which is what's needed here — `onCreate` above only runs once,
+        // the very first time the database file is created.
+        beforeOpen: (details) async {
+          await customStatement('PRAGMA foreign_keys = ON');
+        },
       );
 }
 

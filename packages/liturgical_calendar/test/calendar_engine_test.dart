@@ -182,6 +182,152 @@ void main() {
       }
     });
 
+    test(
+        'a Sunday of Advent outranks a General Roman Calendar solemnity '
+        'fixed to the same date (round 11 regression)', () {
+      // Confirmed via a plain day-of-week check (not assumed): Dec 8 (the
+      // Immaculate Conception, a fixed solemnity) falls on a Sunday in
+      // both 2024 and 2030 — and in both years it lands on the Second
+      // Sunday of Advent specifically, not merely "some Sunday." Real
+      // Church practice transfers the solemnity in that case, since the
+      // Roman Missal's own Table of Liturgical Days ranks Sundays of
+      // Advent/Lent/Easter (tier I.2) above General Calendar solemnities
+      // (tier II.4). The engine's `_tier()` function used to grant tier-1
+      // status to *every* candidate present on a Sunday of Advent/Lent/
+      // Easter, not just the Sunday-rank candidate itself — so a fixed
+      // solemnity landing on one of these Sundays would tie with the
+      // Sunday at tier 1 and then win the tie-break (which prefers any
+      // non-filler candidate over the generic filler), incorrectly
+      // reporting the solemnity as `.primary` instead of the Sunday. No
+      // prior test in this file exercised a fixed-date solemnity
+      // coinciding with one of these Sundays, so this went undetected
+      // across every round and CI run to date.
+      for (final year in [2024, 2030]) {
+        final dec8 = DateTime(year, 12, 8);
+        expect(dec8.weekday, DateTime.sunday,
+            reason: 'test setup assumption: Dec 8, $year must be a Sunday');
+        final day = resolveLiturgicalDay(dec8);
+        expect(day.season, LiturgicalSeason.advent);
+        expect(day.weekOfSeason, 2);
+        expect(day.primary.rank, CelebrationRank.sunday,
+            reason: 'the Second Sunday of Advent must win as .primary — '
+                'a solemnity fixed to this date must not displace it');
+        expect(day.primary.key, isNot(contains('immaculateConception')));
+        // The Immaculate Conception should still appear as a secondary
+        // celebration (a real parish needs to know it's there, even
+        // though the Sunday takes precedence) rather than disappearing
+        // entirely.
+        expect(
+          day.celebrations.any((c) => c.key == 'immaculateConception'),
+          isTrue,
+          reason: 'the solemnity should still be listed among the day\'s '
+              'celebrations, just not as .primary',
+        );
+      }
+    });
+
+    test(
+        'a Sunday in Ordinary Time outranks a fixed Feast of a Saint on the '
+        'General Roman Calendar (round 12 regression)', () {
+      // Confirmed via a plain day-of-week check: Jan 25, 2026 is a Sunday.
+      // The Baptism of the Lord 2026 falls on Jan 11, so Ordinary Time
+      // begins Jan 12 and Jan 25 lands squarely in it (the 3rd Sunday) —
+      // not the Christmas season. Jan 25 is also the fixed date of the
+      // Conversion of St. Paul, a Feast, but of a saint, not of the Lord.
+      // Per the Missal's Table of Liturgical Days, Sundays of Ordinary
+      // Time (II.6) outrank Feasts of the Saints in the General Calendar
+      // (II.7) — the Sunday must win as `.primary`. Before this fix,
+      // every `CelebrationRank.feast` celebration — whether a Feast of
+      // the Lord or an ordinary saint's feast — shared one
+      // undifferentiated precedence tier that outranked the Sunday
+      // filler outright, so St. Paul wrongly won `.primary` and the
+      // Sunday was filtered out of `celebrations` entirely (not even
+      // shown as secondary).
+      final jan25 = DateTime(2026, 1, 25);
+      expect(jan25.weekday, DateTime.sunday,
+          reason: 'test setup assumption: Jan 25, 2026 must be a Sunday');
+      final day = resolveLiturgicalDay(jan25);
+      expect(day.season, LiturgicalSeason.ordinaryTime);
+      expect(day.weekOfSeason, 3);
+      expect(day.primary.rank, CelebrationRank.sunday,
+          reason: 'the 3rd Sunday in Ordinary Time must win as .primary — '
+              "a saint's feast fixed to this date must not displace it");
+      expect(day.color, LiturgicalColor.green);
+      expect(day.primary.key, isNot(contains('conversionOfStPaul')));
+      expect(
+        day.celebrations.any((c) => c.key == 'conversionOfStPaul'),
+        isTrue,
+        reason: 'the Conversion of St. Paul should still be listed as a '
+            'secondary celebration, just not as .primary and not dropped',
+      );
+    });
+
+    test(
+        'Holy Family Sunday outranks a coinciding fixed Dec 26/28 feast '
+        '(round 12 regression)', () {
+      // Confirmed via a plain day-of-week check: Dec 28, 2025 is a Sunday.
+      // `holyFamily(2025)` independently resolves to that same date (the
+      // first Sunday found scanning Dec 26-31) — so Holy Family Sunday
+      // coincides with the fixed Holy Innocents feast, also Dec 28. Holy
+      // Family must always win: it is the proper title of that week's
+      // Sunday within the Octave of Christmas, not an ordinary competing
+      // feast of a saint. Before this fix, both were the same
+      // undifferentiated `feast` tier, and the comparator's tie-break
+      // couldn't distinguish two non-filler entries — an unresolved tie
+      // silently decided by `List.sort`'s explicitly-not-guaranteed-stable
+      // order, exactly the shape of bug rounds 6, 9, and 11 already found
+      // elsewhere in this function.
+      final dec28 = DateTime(2025, 12, 28);
+      expect(dec28.weekday, DateTime.sunday,
+          reason: 'test setup assumption: Dec 28, 2025 must be a Sunday');
+      final hf = holyFamily(2025);
+      expect(hf.month, 12);
+      expect(hf.day, 28,
+          reason: 'test setup assumption: Holy Family 2025 must fall on '
+              'Dec 28, coinciding with the fixed Holy Innocents entry');
+      final day = resolveLiturgicalDay(dec28);
+      expect(day.primary.key, 'holyFamily');
+      expect(day.color, LiturgicalColor.white);
+      expect(
+        day.celebrations.any((c) => c.key == 'holyInnocents'),
+        isTrue,
+        reason: 'Holy Innocents should still be listed as a secondary '
+            'celebration, just not as .primary',
+      );
+    });
+
+    test(
+        'Ascension Thursday outranks even a local-calendar solemnity '
+        '(round 12 regression)', () {
+      // Ascension 2026 = Easter (Apr 5) + 39 days = May 14, a Thursday.
+      // `topPrecedenceKeys` in calendar_engine.dart previously omitted
+      // 'ascension' despite the doc comment above it already saying "the
+      // four solemnities of the Lord" belong in that set — Ascension
+      // only ever scored the ordinary solemnity tier, so it could tie
+      // with (and lose to, depending on sort order) a same-date
+      // local-calendar solemnity, unlike every other day in that set
+      // (mirrors the existing "Monday of Holy Week outranks even a
+      // local-calendar solemnity" regression test above).
+      final md = MovableDates.forYear(2026);
+      expect(md.ascensionThursday, DateTime.utc(2026, 5, 14),
+          reason: 'test setup assumption: Ascension 2026 must be May 14');
+      final entry = LocalCalendarEntry(
+        id: 'wouldBeSolemnity',
+        month: md.ascensionThursday.month,
+        day: md.ascensionThursday.day,
+        name: 'A Parish Patronal Solemnity That Happens to Land Here',
+        rank: CelebrationRank.solemnity,
+        color: LiturgicalColor.white,
+      );
+      final day = resolveLiturgicalDay(md.ascensionThursday,
+          localSupplement: [entry]);
+      expect(day.primary.key, 'ascension');
+      // Still offered as an available option, just not primary.
+      expect(
+          day.celebrations.any((c) => c.name.contains('Patronal Solemnity')),
+          isTrue);
+    });
+
     test('Christ the King is the Sunday immediately before Advent begins', () {
       final ctk = christTheKing(2026);
       final advent1 = adventFirstSunday(2026);

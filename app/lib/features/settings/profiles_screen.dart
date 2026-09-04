@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../data/admin_session.dart';
 import '../../data/database.dart';
 import '../../data/repositories.dart';
+import 'admin_pin_screen.dart';
 
+/// Profiles include the one-and-only admin profile that
+/// `admin_pin_screen.dart` looks up (the first row with
+/// `role == ProfileRole.admin`), so adding or deleting a profile here is
+/// gated behind [AdminSession] the same way editing/deleting an inventory
+/// item is (see `inventory_screen.dart`'s `_showItemDialog`) — otherwise a
+/// locked-out volunteer could delete the admin profile to make
+/// `AdminPinScreen` treat the app as having no PIN set at all, and set
+/// their own.
 class ProfilesScreen extends StatelessWidget {
   const ProfilesScreen({super.key});
 
@@ -39,7 +49,7 @@ class ProfilesScreen extends StatelessWidget {
                   trailing: IconButton(
                     icon: const Icon(Icons.delete_outline),
                     tooltip: 'Delete ${p.displayName}',
-                    onPressed: () => repo.deleteProfile(p.id),
+                    onPressed: () => _confirmDelete(context, repo, p),
                   ),
                 ),
               );
@@ -55,7 +65,45 @@ class ProfilesScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _confirmDelete(
+      BuildContext context, ProfileRepository repo, Profile profile) async {
+    final session = context.read<AdminSession>();
+    if (!session.isUnlocked) {
+      AdminPinRequiredSnackBar.show(context);
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete this profile?'),
+        content: Text(profile.role == ProfileRole.admin
+            ? '"${profile.displayName}" will be removed, along with its '
+                'admin PIN. If this is the only admin profile, the next '
+                'person to open Admin PIN will be able to set a brand-new '
+                'PIN with no admin confirmation — make sure that\'s really '
+                'what you want.'
+            : '"${profile.displayName}" will be removed.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await repo.deleteProfile(profile.id);
+    }
+  }
+
   Future<void> _showAddDialog(BuildContext context, ProfileRepository repo) async {
+    final session = context.read<AdminSession>();
+    if (!session.isUnlocked) {
+      AdminPinRequiredSnackBar.show(context);
+      return;
+    }
     final nameCtrl = TextEditingController();
     var role = ProfileRole.volunteer;
     // Round 11: see the identical guard elsewhere (reminders_screen.dart,

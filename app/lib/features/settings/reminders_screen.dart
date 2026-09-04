@@ -69,6 +69,12 @@ class RemindersScreen extends StatelessWidget {
   }
 
   Future<void> _showAddDialog(BuildContext context, ReminderRepository repo) async {
+    // Captured from the (unpushed) screen's own context, not the dialog's —
+    // the dialog's BuildContext is on its way out right when we'd want to
+    // use it below (after `Navigator.pop()` closes the dialog), so it's
+    // not a safe handle to show a SnackBar with. This screen's own
+    // ScaffoldMessenger stays mounted across the dialog's whole lifecycle.
+    final messenger = ScaffoldMessenger.of(context);
     final titleCtrl = TextEditingController();
     final bodyCtrl = TextEditingController();
     var when = DateTime.now().add(const Duration(days: 1));
@@ -138,14 +144,39 @@ class RemindersScreen extends StatelessWidget {
                               : bodyCtrl.text.trim(),
                           triggerAt: when,
                         );
-                        await NotificationsService.instance.scheduleReminder(
-                          id: id,
-                          title: titleCtrl.text.trim(),
-                          body: bodyCtrl.text.trim().isEmpty
-                              ? null
-                              : bodyCtrl.text.trim(),
-                          triggerAt: when,
-                        );
+                        // The `Reminder` row above is already saved and
+                        // useful on its own (it still shows in this list)
+                        // even if scheduling the OS-level notification
+                        // fails below — e.g. missing exact-alarm
+                        // permission on Android. Catching this separately
+                        // from `repo.add` above means a failure here still
+                        // closes the dialog (nothing left for the user to
+                        // usefully retry) and tells them what happened,
+                        // instead of leaving the dialog stuck open with no
+                        // explanation and inviting a duplicate row on a
+                        // "did that work?" retry tap.
+                        try {
+                          await NotificationsService.instance.scheduleReminder(
+                            id: id,
+                            title: titleCtrl.text.trim(),
+                            body: bodyCtrl.text.trim().isEmpty
+                                ? null
+                                : bodyCtrl.text.trim(),
+                            triggerAt: when,
+                          );
+                        } catch (_) {
+                          if (context.mounted) Navigator.of(context).pop();
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                "Reminder saved, but the notification couldn't be "
+                                'scheduled — check notification/alarm permissions '
+                                'in your device settings.',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
                         if (context.mounted) Navigator.of(context).pop();
                       } finally {
                         if (context.mounted) setState(() => submitting = false);

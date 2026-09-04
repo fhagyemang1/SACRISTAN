@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -40,14 +42,22 @@ Future<void> openSmsComposerWithFeedback(
 }) async {
   final launched = await openSmsComposer(phone: phone, body: body);
   if (!launched && context.mounted) {
+    // Windows is the one platform where this is *always* expected (see
+    // the class doc above) — name it specifically there so the message
+    // isn't misleadingly reassuring. Anywhere else (Android/iOS/macOS/
+    // Linux with no default messaging app configured) it's a real,
+    // fixable gap on that device, so the message must not claim it's a
+    // Windows-only limitation — that would send a phone/tablet user
+    // looking in the wrong place instead of setting a default SMS app.
+    final message = Platform.isWindows
+        ? "Couldn't open a messaging app on this device to send the "
+            'text — this is expected on Windows, which has no SMS app to '
+            'hand off to.'
+        : "Couldn't open a messaging app on this device to send the "
+            'text — no messaging app is available to handle this. Check '
+            'that a default SMS/messaging app is set up on this device.';
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          "Couldn't open a messaging app on this device to send the "
-          'text — this is expected on Windows, which has no SMS app to '
-          'hand off to.',
-        ),
-      ),
+      SnackBar(content: Text(message)),
     );
   }
 }

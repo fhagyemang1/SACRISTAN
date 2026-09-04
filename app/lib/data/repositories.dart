@@ -342,6 +342,67 @@ class ChecklistRepository {
     return createInstance(massId, templateId);
   }
 
+  /// Round 12: `findOrCreateInstance` above (and `MassRepository
+  /// .todaysMasses`, which callers use to decide *which* Mass to pass it)
+  /// both key strictly off calendar date — "today" is whatever
+  /// `DateTime.now()` says right now. That is exactly right for deciding
+  /// whether a *new* Mass has happened, but wrong for resuming one already
+  /// in progress: a checklist started before midnight and still open when
+  /// the date rolls over (an Easter Vigil that genuinely runs past
+  /// 12:00 AM is the clearest case, but simply not finishing before the day
+  /// turns over is enough) would otherwise find no Mass "today", and
+  /// `checklist_list_screen.dart` would silently create a brand-new Mass
+  /// and a brand-new, blank `ChecklistInstance` — leaving the real one's
+  /// ticks sitting untouched, and effectively invisible, in SQLite.
+  ///
+  /// This looks for an instance of this exact [templateId] that was
+  /// created within [window] and is not yet fully ticked off, regardless of
+  /// which calendar date it was created on. [templateId] (not massType) is
+  /// deliberately the key: `checklist_list_screen.dart` only ever reaches
+  /// this when *no* Mass exists for today yet, so it can't collide with the
+  /// "two simultaneous same-type Masses picked explicitly via the Mass
+  /// picker" case — each of those already has its own Mass row for today
+  /// and resumes correctly through `findOrCreateInstance` instead. Ordered
+  /// newest-first: in the ordinary case there is exactly one candidate (the
+  /// checklist actually still in progress); if more than one genuinely
+  /// overlapping incomplete instance of the same template exists within the
+  /// window — rare, but possible — the caller resumes the most recently
+  /// started one rather than being offered a picker, which keeps this
+  /// change small and avoids silently starting a third one.
+  Future<List<ChecklistInstance>> recentIncompleteInstances(
+    String templateId, {
+    Duration window = const Duration(hours: 18),
+  }) async {
+    final items = await (db.select(db.checklistItems)
+          ..where((i) => i.templateId.equals(templateId)))
+        .get();
+    // No items means "complete" is meaningless (and would be vacuously
+    // true below) — nothing to resume, fall through to the normal flow.
+    if (items.isEmpty) return const [];
+    final itemIds = items.map((i) => i.id).toSet();
+
+    final cutoff = DateTime.now().subtract(window);
+    final candidates = await (db.select(db.checklistInstances)
+          ..where((i) =>
+              i.templateId.equals(templateId) &
+              i.createdAt.isBiggerOrEqualValue(cutoff))
+          ..orderBy([(i) => OrderingTerm.desc(i.createdAt)]))
+        .get();
+    if (candidates.isEmpty) return const [];
+
+    final result = <ChecklistInstance>[];
+    for (final instance in candidates) {
+      final doneTicks = await (db.select(db.checklistTicks)
+            ..where((t) =>
+                t.instanceId.equals(instance.id) & t.isDone.equals(true)))
+          .get();
+      final doneIds = doneTicks.map((t) => t.itemId).toSet();
+      final isComplete = itemIds.every(doneIds.contains);
+      if (!isComplete) result.add(instance);
+    }
+    return result;
+  }
+
   Stream<Map<String, ChecklistTick>> watchTicks(String instanceId) {
     final query = db.select(db.checklistTicks)
       ..where((t) => t.instanceId.equals(instanceId));

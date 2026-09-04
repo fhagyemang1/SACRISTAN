@@ -52,7 +52,8 @@ final List<FixedCelebration> generalRomanCalendarFixed = [
       latinName: 'In Praesentatione Domini',
       rank: CelebrationRank.feast,
       color: LiturgicalColor.white,
-      source: _c)),
+      source: _c,
+      isFeastOfTheLord: true)),
   const FixedCelebration(2, 22, Celebration(
       key: 'chairOfStPeter',
       name: 'The Chair of St. Peter the Apostle',
@@ -127,7 +128,8 @@ final List<FixedCelebration> generalRomanCalendarFixed = [
       name: 'The Transfiguration of the Lord',
       rank: CelebrationRank.feast,
       color: LiturgicalColor.white,
-      source: _c)),
+      source: _c,
+      isFeastOfTheLord: true)),
   const FixedCelebration(8, 15, Celebration(
       key: 'assumption',
       name: 'The Assumption of the Blessed Virgin Mary',
@@ -147,7 +149,8 @@ final List<FixedCelebration> generalRomanCalendarFixed = [
       latinName: 'In Exaltatione Sanctae Crucis',
       rank: CelebrationRank.feast,
       color: LiturgicalColor.red,
-      source: _c)),
+      source: _c,
+      isFeastOfTheLord: true)),
   const FixedCelebration(9, 29, Celebration(
       key: 'archangels',
       name: 'Ss. Michael, Gabriel, and Raphael, Archangels',
@@ -185,7 +188,15 @@ final List<FixedCelebration> generalRomanCalendarFixed = [
       name: 'The Dedication of the Lateran Basilica',
       rank: CelebrationRank.feast,
       color: LiturgicalColor.white,
-      source: _c)),
+      source: _c,
+      // The Lateran is the cathedral of Rome, dedicated to Christ the
+      // Savior; this feast is conventionally grouped with the "Feasts of
+      // the Lord in the General Calendar" (II.5) rather than with feasts
+      // of a particular saint (II.7) for precedence purposes. Flagged as
+      // the lowest-confidence classification in this file — unlike
+      // Presentation/Transfiguration/Exaltation of the Cross, which are
+      // unambiguous.
+      isFeastOfTheLord: true)),
   const FixedCelebration(11, 30, Celebration(
       key: 'stAndrewApostle',
       name: 'St. Andrew, Apostle',
@@ -242,7 +253,7 @@ List<FixedCelebration> movableCelebrationsForYear(int year) {
   final md = MovableDates.forYear(year);
   Celebration mk(String key, String name, CelebrationRank rank,
           LiturgicalColor color,
-          {bool gold = false, String? latin}) =>
+          {bool gold = false, String? latin, bool isLord = false}) =>
       Celebration(
           key: key,
           name: name,
@@ -250,7 +261,8 @@ List<FixedCelebration> movableCelebrationsForYear(int year) {
           rank: rank,
           color: color,
           source: _mv,
-          goldPermitted: gold);
+          goldPermitted: gold,
+          isFeastOfTheLord: isLord);
 
   FixedCelebration f(DateTime d, Celebration c) => FixedCelebration(d.month, d.day, c);
 
@@ -277,8 +289,20 @@ List<FixedCelebration> movableCelebrationsForYear(int year) {
     f(md.trinitySunday, mk('trinitySunday', 'The Most Holy Trinity', CelebrationRank.solemnity, LiturgicalColor.white, latin: 'Sanctissimae Trinitatis')),
     f(md.corpusChristiSunday, mk('corpusChristi', 'The Most Holy Body and Blood of Christ (Corpus Christi)', CelebrationRank.solemnity, LiturgicalColor.white, gold: true, latin: 'Sanctissimi Corporis et Sanguinis Christi')),
     f(md.sacredHeartFriday, mk('sacredHeart', 'The Most Sacred Heart of Jesus', CelebrationRank.solemnity, LiturgicalColor.white, latin: 'Sanctissimi Cordis Iesu')),
-    f(baptismOfTheLord(year), mk('baptismOfTheLord', 'The Baptism of the Lord', CelebrationRank.feast, LiturgicalColor.white)),
-    f(holyFamily(year), mk('holyFamily', 'The Holy Family of Jesus, Mary and Joseph', CelebrationRank.feast, LiturgicalColor.white)),
+    f(baptismOfTheLord(year), mk('baptismOfTheLord', 'The Baptism of the Lord', CelebrationRank.feast, LiturgicalColor.white, isLord: true)),
+    // Holy Family is the proper title of the Sunday within the Octave of
+    // Christmas (or, when Christmas Day itself is a Sunday, of Dec 30) —
+    // it is the Christmas-season counterpart to how Divine Mercy Sunday
+    // and Palm Sunday occupy their own proper Sundays. It must therefore
+    // always outrank an ordinary Feast of a Saint fixed to the same date
+    // (Dec 26 St. Stephen, Dec 28 Holy Innocents) as well as the generic
+    // "Sunday within the Christmas Season" filler — treating it as a
+    // Feast of the Lord (tier II.5, same as e.g. the Presentation) rather
+    // than an ordinary Feast of a Saint (II.7) is what guarantees that in
+    // `calendar_engine.dart`'s `_tier()`. See the explicit key-based
+    // tie-break in `resolveLiturgicalDay`'s comparator for a second,
+    // independent guard on top of this classification.
+    f(holyFamily(year), mk('holyFamily', 'The Holy Family of Jesus, Mary and Joseph', CelebrationRank.feast, LiturgicalColor.white, isLord: true)),
     f(christTheKing(year), mk('christTheKing', 'Our Lord Jesus Christ, King of the Universe', CelebrationRank.solemnity, LiturgicalColor.white, latin: 'Domini Nostri Iesu Christi Universorum Regis')),
     // Ascension is shown at its traditional Thursday date (Easter+39). Many
     // episcopal conferences transfer the celebration to the following

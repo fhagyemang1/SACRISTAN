@@ -105,6 +105,24 @@ final List<BuiltinTemplate> builtinTemplates = [
     BuiltinItem('redVestments', 'Red vestments laid out'),
     BuiltinItem('passionGospel', 'Passion narrative marked / assigned readers'),
   ]),
+  // Round 12: every other Mass type in this file pairs a 'pre' template
+  // with a 'post' one — Holy Week's four liturgies previously had 'pre'
+  // only, so `checklist_list_screen.dart` never showed an after-Mass
+  // checklist for any of them, regardless of what the sacristan actually
+  // did afterward. Each 'post' template below is tailored to what that
+  // specific liturgy actually leaves behind rather than reusing
+  // `_postMassCore` wholesale — Holy Thursday and Good Friday in
+  // particular have after-liturgy states ("altar stripped bare", "no
+  // cross yet") that `_postMassCore`'s generic "sanctuary restored to
+  // order" would actively contradict.
+  const BuiltinTemplate('Holy Week — Palm Sunday (After Mass)', MassType.holyWeek, 'post', [
+    BuiltinItem('purifyVesselsPalmSunday', 'Vessels purified and stored', 'Purificatio Vasorum'),
+    BuiltinItem('extinguishCandlesPalmSunday', 'Candles extinguished'),
+    BuiltinItem('leftoverPalmsStored', 'Extra palm branches gathered and stored '
+        '(kept dry for burning into next year\'s Ash Wednesday ashes)'),
+    BuiltinItem('processionalItemsStored', 'Processional cross/banners returned to storage'),
+    BuiltinItem('sanctuaryResetPalmSunday', 'Sanctuary restored to order'),
+  ]),
   const BuiltinTemplate('Holy Week — Holy Thursday', MassType.holyWeek, 'pre', [
     BuiltinItem('chrismOilsReceived', 'Holy oils from the Chrism Mass received and stored'),
     BuiltinItem('mandatumBasin', 'Basin, pitcher, and towels ready for the Mandatum (washing of feet)'),
@@ -112,11 +130,31 @@ final List<BuiltinTemplate> builtinTemplates = [
     BuiltinItem('extraHostsTriduum', 'Sufficient hosts consecrated for Good Friday'),
     BuiltinItem('stripAltarAfter', 'Plan to strip the main altar after the liturgy'),
   ]),
+  const BuiltinTemplate('Holy Week — Holy Thursday (After Mass)', MassType.holyWeek, 'post', [
+    BuiltinItem('purifyVesselsHolyThursday', 'Vessels purified and stored', 'Purificatio Vasorum'),
+    BuiltinItem('altarStripped', 'Main altar stripped completely bare after the procession to '
+        'the altar of repose — cloths, candles, and cross removed', 'Denudatio Altaris'),
+    BuiltinItem('altarOfReposeReady', 'Altar of repose left prepared and lit for adoration through the night'),
+    BuiltinItem('mandatumItemsStored', 'Basin, pitcher, and towels from the Mandatum cleaned and put away'),
+    BuiltinItem('sacristyLockedHolyThursday', 'Sacristy and church secured for the overnight watch, per parish custom'),
+  ]),
   const BuiltinTemplate('Holy Week — Good Friday', MassType.holyWeek, 'pre', [
     BuiltinItem('bareAltar', 'Main altar left completely bare (no cloth, candles, or cross)'),
     BuiltinItem('crossForVeneration', 'Cross prepared for veneration'),
     BuiltinItem('reservedHostsGoodFriday', 'Reserved hosts from Holy Thursday ready for Communion'),
     BuiltinItem('redVestmentsGoodFriday', 'Red vestments laid out'),
+  ]),
+  const BuiltinTemplate('Holy Week — Good Friday (After the Liturgy)', MassType.holyWeek, 'post', [
+    // The main altar itself stays bare until the Vigil — deliberately no
+    // "sanctuary reset" item here.
+    BuiltinItem('crossFromVenerationStored', 'Cross used for veneration returned to its place, '
+        'or left out per parish custom'),
+    BuiltinItem('veilsGathered', 'Violet/black veils removed from images earlier in Lent gathered and set aside'),
+    BuiltinItem('purifyVesselsGoodFriday', 'Vessels from the Communion service purified and stored',
+        'Purificatio Vasorum'),
+    BuiltinItem('reservedHostsSecuredGoodFriday', 'Any hosts remaining after Communion reposed appropriately'),
+    BuiltinItem('confirmAltarBare', 'Confirm the main altar remains completely bare — no cloth, '
+        'candles, or cross — until the Easter Vigil'),
   ]),
   const BuiltinTemplate('Holy Week — Easter Vigil', MassType.holyWeek, 'pre', [
     BuiltinItem('newFire', 'New fire materials ready (fire pit/brazier, fuel)'),
@@ -125,5 +163,17 @@ final List<BuiltinTemplate> builtinTemplates = [
     BuiltinItem('individualCandles', 'Small candles for the congregation'),
     BuiltinItem('whiteGoldVestmentsVigil', 'White/gold vestments laid out'),
     BuiltinItem('bellsRestored', 'Bells and Gloria ready to be restored at the Vigil'),
+  ]),
+  const BuiltinTemplate('Holy Week — Easter Vigil (After Mass)', MassType.holyWeek, 'post', [
+    BuiltinItem('paschalCandleStored', 'Paschal candle set safely in its stand for Eastertide, '
+        'extinguished per parish practice', 'Cereus Paschalis'),
+    BuiltinItem('newFireAreaExtinguished', 'New fire/brazier fully extinguished and area left safe'),
+    BuiltinItem('baptismalItemsStoredVigil', 'Baptismal/confirmation items (oils, white garments, '
+        'candles) collected and stored'),
+    BuiltinItem('purifyVesselsVigil', 'The larger-than-usual number of vessels from Communion purified and stored',
+        'Purificatio Vasorum'),
+    BuiltinItem('individualCandlesCleared', 'Small congregation candles and drip guards cleared from the pews'),
+    BuiltinItem('sanctuaryResetVigil', 'Sanctuary restored to order for Easter Sunday\'s Masses'),
+    BuiltinItem('restockVigil', 'Hosts/wine/candle stock checked and restocked ahead of Easter Sunday'),
   ]),
 ];

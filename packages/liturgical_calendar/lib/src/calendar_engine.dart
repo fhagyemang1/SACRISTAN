@@ -29,26 +29,62 @@ bool _isGenericFiller(Celebration c) => c.key.startsWith('default');
 /// Lower number = higher precedence = wins as [LiturgicalDay.primary].
 ///
 /// Known simplification: the real Table of Liturgical Days has ~13 finely
-/// graded tiers (distinguishing e.g. feasts of the Lord from feasts of
-/// saints, and several classes of memorial). This 8-tier version is
-/// accurate for the overwhelming majority of days a sacristan will
-/// encounter; edge cases at the boundary between two close tiers should be
-/// confirmed against the parish's printed Ordo.
+/// graded tiers (several classes of memorial, and a "proper feast" tier
+/// this app doesn't model). This 10-tier version — which, as of round 12,
+/// does distinguish feasts of the Lord (tier 3) from feasts of the BVM/
+/// Saints (tier 5), see [Celebration.isFeastOfTheLord] — is accurate for
+/// the overwhelming majority of days a sacristan will encounter; edge
+/// cases at the boundary between two close tiers should be confirmed
+/// against the parish's printed Ordo.
 int _tier(Celebration c, {required bool isSunday, required LiturgicalSeason season}) {
   // Days that sit in the Roman Missal's top precedence tier (General Norms
   // n. 59, "I.2") even though most of them are not solemnities by rank:
-  // the four solemnities of the Lord/Pentecost/Epiphany, Ash Wednesday,
-  // and Monday-Wednesday of Holy Week. Nothing else — not even a
-  // solemnity added via the local parish/diocesan calendar — may be
-  // celebrated in their place. (Named `topPrecedenceKeys`, not
-  // `topSolemnityKeys`, precisely because Ash Wednesday and the Holy Week
-  // weekdays are ferial in *rank* but top-tier in *precedence*.)
+  // the four solemnities of the Lord — Nativity (Christmas), Epiphany,
+  // Ascension, Pentecost — plus Easter Sunday itself (the first of the
+  // "Sundays of Easter"), Ash Wednesday, and Monday-Wednesday of Holy
+  // Week. Nothing else — not even a solemnity added via the local parish/
+  // diocesan calendar — may be celebrated in their place. (Named
+  // `topPrecedenceKeys`, not `topSolemnityKeys`, precisely because Ash
+  // Wednesday and the Holy Week weekdays are ferial in *rank* but
+  // top-tier in *precedence*.)
+  //
+  // Round 12 found `'ascension'` missing from this set: the doc comment
+  // above already said "the four solemnities of the Lord" belonged here,
+  // but the literal set only ever had three of the four (Christmas,
+  // Epiphany, Pentecost) — Ascension fell through to the ordinary
+  // solemnity tier (2) below, where it could tie with, and potentially
+  // lose to, a same-date local-calendar solemnity. Nothing in this
+  // package's fixed General Roman Calendar data collides with Ascension's
+  // date range (Easter+39, i.e. never before Apr 30), so no *existing*
+  // date is affected — but a parish's local supplementary calendar could
+  // trivially create the collision (see the `calendar_engine_test.dart`
+  // regression test for this fix, modeled on the existing Holy Monday
+  // one).
   final topPrecedenceKeys = {
-    'christmas', 'easterSunday', 'epiphany', 'pentecost', 'ashWednesday',
-    'holyMonday', 'holyTuesday', 'holyWednesday',
+    'christmas', 'easterSunday', 'epiphany', 'ascension', 'pentecost',
+    'ashWednesday', 'holyMonday', 'holyTuesday', 'holyWednesday',
   };
   if (c.rank == CelebrationRank.triduum) return 1;
+  // Only the day's own Sunday-rank candidate belongs at this top tier —
+  // not every candidate merely because the *date* is a Sunday of Advent,
+  // Lent, or Easter. This is the exact same shape of bug round 9 found
+  // and fixed for tier 5 below (there, `isSunday` alone was wrongly
+  // treated as sufficient instead of checking `c.rank`) — this occurrence
+  // at tier 1 went unnoticed until round 11's review because no existing
+  // test exercised a fixed-date General Roman Calendar solemnity landing
+  // on one of these Sundays. Without the `c.rank == sunday` guard, a
+  // solemnity fixed to a date that happens to fall on, say, the Second
+  // Sunday of Advent (verified: Dec 8 — Immaculate Conception — lands on
+  // a Sunday of Advent in 2024 and 2030) would *also* get bumped to tier
+  // 1 here, tie with the actual Sunday, and then win the tie-break below
+  // (which prefers any non-filler entry over the generic filler) —
+  // exactly backwards from the Roman Missal's own Table of Liturgical
+  // Days, where Sundays of Advent/Lent/Easter (I.2) outrank General
+  // Calendar solemnities (II.4). The real-world practice this app must
+  // match is that the Church transfers such a solemnity to the next open
+  // day rather than letting it displace the Sunday.
   if (isSunday &&
+      c.rank == CelebrationRank.sunday &&
       (season == LiturgicalSeason.advent ||
           season == LiturgicalSeason.lent ||
           season == LiturgicalSeason.easter)) {
@@ -56,21 +92,41 @@ int _tier(Celebration c, {required bool isSunday, required LiturgicalSeason seas
   }
   if (topPrecedenceKeys.contains(c.key)) return 1;
   if (c.rank == CelebrationRank.solemnity) return 2;
-  if (c.rank == CelebrationRank.feast) return 3;
+  // Feasts of the Lord in the General Calendar (Table of Liturgical Days,
+  // II.5 — e.g. the Presentation, the Transfiguration, the Baptism of the
+  // Lord) outrank Sundays of the Christmas season and of Ordinary Time
+  // (II.6, tier 4 below). [Celebration.isFeastOfTheLord] carries this
+  // distinction; see its doc comment in models.dart.
+  if (c.rank == CelebrationRank.feast && c.isFeastOfTheLord) return 3;
+  // The day's own Sunday-rank celebration (II.6: Sundays of the Christmas
+  // season and of Ordinary Time) — not every candidate merely because
+  // [isSunday] (the *date*) is true. A round-9-found bug had this
+  // checking the date instead of the candidate, so a local
+  // optional-memorial entry landing on a Sunday incorrectly tied with
+  // (and, via the same-source bug that round fixed, could even beat) the
+  // actual Sunday celebration. This must come *before* the plain-feast
+  // tier below: II.6 (Sundays) outranks II.7 (feasts of saints).
+  if (isSunday && c.rank == CelebrationRank.sunday) return 4;
+  // Round 12: feasts of the Blessed Virgin Mary and of the Saints in the
+  // General Calendar (II.7 — e.g. the Conversion of St. Paul, the Chair
+  // of St. Peter, the Visitation) rank *below* the Sundays above. Every
+  // `CelebrationRank.feast` used to land in the same tier as true feasts
+  // of the Lord (both were tier 3, undifferentiated) — so a saint's feast
+  // fixed to a date that happened to fall on a Sunday of Ordinary Time or
+  // the Christmas season would wrongly displace it. E.g. 2026-01-25 is
+  // both a Sunday in Ordinary Time and the fixed date of the Conversion
+  // of St. Paul (a feast, not a Feast of the Lord) — the Sunday must win
+  // as `.primary`, with St. Paul demoted to a secondary celebration, not
+  // dropped or promoted ahead of it. See the regression test in
+  // `calendar_engine_test.dart` for this exact date.
+  if (c.rank == CelebrationRank.feast) return 5;
   if (_isGenericFiller(c) && c.key.startsWith('default.privileged')) {
-    return 4;
+    return 6;
   }
-  // Only the day's own Sunday-rank celebration belongs at this tier — not
-  // every candidate merely because [isSunday] (the *date*) is true. A
-  // round-9-found bug had this checking the date instead of the
-  // candidate, so a local optional-memorial entry landing on a Sunday
-  // incorrectly tied with (and, via the same-source bug above, could
-  // even beat) the actual Sunday celebration.
-  if (isSunday && c.rank == CelebrationRank.sunday) return 5;
-  if (c.rank == CelebrationRank.memorial) return 6;
-  if (_isGenericFiller(c)) return 7; // plain ferial default
-  if (c.rank == CelebrationRank.optionalMemorial) return 8;
-  return 9;
+  if (c.rank == CelebrationRank.memorial) return 7;
+  if (_isGenericFiller(c)) return 8; // plain ferial default
+  if (c.rank == CelebrationRank.optionalMemorial) return 9;
+  return 10;
 }
 
 bool _isPrivilegedFerial(DateTime date, LiturgicalSeason season) {
@@ -260,6 +316,22 @@ LiturgicalDay resolveLiturgicalDay(
     final aIsDefault = _isGenericFiller(a);
     final bIsDefault = _isGenericFiller(b);
     if (aIsDefault != bIsDefault) return aIsDefault ? 1 : -1;
+    // Round 12, explicit named guard: Holy Family Sunday must always win
+    // when it ties with another named (non-filler) candidate — most
+    // notably the fixed Dec 26 St. Stephen or Dec 28 Holy Innocents
+    // entries, on the rare years Holy Family Sunday falls on one of those
+    // dates (e.g. 2025-12-28). `isFeastOfTheLord` on the `holyFamily`
+    // celebration (general_roman_calendar.dart) already keeps this from
+    // being a real tie in practice — Holy Family sorts into tier 3 above,
+    // Holy Innocents/St. Stephen into tier 5 — but that relies on neither
+    // celebration's classification changing later. This clause makes the
+    // invariant explicit and self-enforcing at the comparator itself,
+    // independent of tier assignment, exactly as this package's own
+    // history (rounds 6, 9, 11) shows an unresolved tie between two
+    // same-tier named entries silently falls back on `List.sort`'s
+    // explicitly-not-guaranteed-stable order.
+    if (a.key == 'holyFamily' && b.key != 'holyFamily') return -1;
+    if (b.key == 'holyFamily' && a.key != 'holyFamily') return 1;
     return 0;
   });
 

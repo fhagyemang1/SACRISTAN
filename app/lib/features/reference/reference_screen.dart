@@ -168,11 +168,25 @@ class _EntryList extends StatelessWidget {
     return StreamBuilder<List<ReferenceEntry>>(
       stream: repo.watchByCategory(category),
       builder: (context, snap) {
-        final entries = snap.data ?? const <ReferenceEntry>[];
-        if (entries.isEmpty) {
+        // `snap.data == null` (stream hasn't emitted its first event yet)
+        // and "the stream emitted an empty list" both make `entries`
+        // empty below, but they're not the same state — an admin can
+        // delete every entry in a category (see the delete button further
+        // down), and that legitimately-empty category must not be shown
+        // as forever "Loading…", which never resolves once the stream
+        // has already emitted.
+        if (!snap.hasData) {
           return const Center(child: Padding(
             padding: EdgeInsets.all(24),
             child: Text('Loading…'),
+          ));
+        }
+        final entries = snap.data!;
+        if (entries.isEmpty) {
+          return const Center(child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text('No entries in this category yet.',
+                textAlign: TextAlign.center),
           ));
         }
         return ListView.builder(
