@@ -111,7 +111,26 @@ int _tier(Celebration c,
   // `week = 1 + daysSince ~/ 7`, where `daysSince` counts from Easter
   // Sunday, so days 0-6 after Easter Sunday (i.e. through the following
   // Saturday) are week 1.
-  if (season == LiturgicalSeason.easter && weekOfSeason == 1 && !isSunday) {
+  //
+  // Round 14 follow-up (found the hard way, by an actual failing `dart
+  // test` run in CI rather than by review): the first version of this
+  // check returned 1 for *any* candidate `c` present on an Octave day —
+  // exactly the same shape of bug already fixed twice elsewhere in this
+  // function (the Sunday-of-Advent/Lent/Easter check above, and the
+  // Sunday-of-Ordinary-Time check below) — checking only the *date*
+  // instead of which candidate the date-level privilege actually belongs
+  // to. That meant St. Mark's own fixed feast *also* scored tier 1 on
+  // April 25 in an Octave year, tying with the Easter-weekday filler; the
+  // comparator's own tie-break rule (a named entry beats the generic
+  // filler on a tie) then picked St. Mark as `.primary` anyway —
+  // reproducing the exact bug this fix was meant to close. The
+  // `_isGenericFiller(c)` guard restricts the privilege to the day's own
+  // Easter-weekday candidate, the same pattern used for the Sunday checks
+  // immediately above and below.
+  if (season == LiturgicalSeason.easter &&
+      weekOfSeason == 1 &&
+      !isSunday &&
+      _isGenericFiller(c)) {
     return 1;
   }
   if (c.rank == CelebrationRank.solemnity) return 2;
