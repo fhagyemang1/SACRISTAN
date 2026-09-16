@@ -36,7 +36,10 @@ bool _isGenericFiller(Celebration c) => c.key.startsWith('default');
 /// the overwhelming majority of days a sacristan will encounter; edge
 /// cases at the boundary between two close tiers should be confirmed
 /// against the parish's printed Ordo.
-int _tier(Celebration c, {required bool isSunday, required LiturgicalSeason season}) {
+int _tier(Celebration c,
+    {required bool isSunday,
+    required LiturgicalSeason season,
+    required int weekOfSeason}) {
   // Days that sit in the Roman Missal's top precedence tier (General Norms
   // n. 59, "I.2") even though most of them are not solemnities by rank:
   // the four solemnities of the Lord — Nativity (Christmas), Epiphany,
@@ -91,6 +94,26 @@ int _tier(Celebration c, {required bool isSunday, required LiturgicalSeason seas
     return 1;
   }
   if (topPrecedenceKeys.contains(c.key)) return 1;
+  // Round 13+ fix: the Octave of Easter (Easter Sunday through the
+  // following Saturday) sits in the Roman Missal's same top-precedence
+  // tier (General Norms n. 59, I.2) as Holy Week Monday-Wednesday —
+  // nothing, not even a solemnity, may be celebrated in its place.
+  // Easter Sunday itself is already covered above via `topPrecedenceKeys`
+  // ('easterSunday'), but the weekdays of the Octave (Easter Monday
+  // through Saturday) are generic filler entries produced by
+  // `_defaultCelebration`'s `easterWeekday` branch below — their key
+  // starts with 'default', not a fixed name, so they never match
+  // `topPrecedenceKeys`' exact-key-match check and previously fell
+  // through to their ferial rank (tier 8), letting a same-date General
+  // Roman Calendar feast (e.g. St. Mark, April 25 — within the Octave in
+  // 2025 and 2030) wrongly win. `weekOfSeason == 1` during the Easter
+  // season is exactly the Octave week: see season_engine.dart's
+  // `week = 1 + daysSince ~/ 7`, where `daysSince` counts from Easter
+  // Sunday, so days 0-6 after Easter Sunday (i.e. through the following
+  // Saturday) are week 1.
+  if (season == LiturgicalSeason.easter && weekOfSeason == 1 && !isSunday) {
+    return 1;
+  }
   if (c.rank == CelebrationRank.solemnity) return 2;
   // Feasts of the Lord in the General Calendar (Table of Liturgical Days,
   // II.5 — e.g. the Presentation, the Transfiguration, the Baptism of the
@@ -304,8 +327,14 @@ LiturgicalDay resolveLiturgicalDay(
   }
 
   candidates.sort((a, b) {
-    final ta = _tier(a, isSunday: isSunday, season: seasonRes.season);
-    final tb = _tier(b, isSunday: isSunday, season: seasonRes.season);
+    final ta = _tier(a,
+        isSunday: isSunday,
+        season: seasonRes.season,
+        weekOfSeason: seasonRes.weekOfSeason);
+    final tb = _tier(b,
+        isSunday: isSunday,
+        season: seasonRes.season,
+        weekOfSeason: seasonRes.weekOfSeason);
     if (ta != tb) return ta.compareTo(tb);
     // Tie-break: a named (non-filler) entry is shown ahead of the
     // generic filler default when they'd otherwise be equal. Must use
@@ -340,11 +369,16 @@ LiturgicalDay resolveLiturgicalDay(
   // noise in the UI). It is kept when it remains the best-ranked entry —
   // including the common case where it sits alongside a lower-precedence
   // optional memorial that a priest may choose instead.
-  final primaryTier =
-      _tier(candidates.first, isSunday: isSunday, season: seasonRes.season);
+  final primaryTier = _tier(candidates.first,
+      isSunday: isSunday,
+      season: seasonRes.season,
+      weekOfSeason: seasonRes.weekOfSeason);
   final filtered = candidates.where((c) {
     if (!_isGenericFiller(c)) return true;
-    final t = _tier(c, isSunday: isSunday, season: seasonRes.season);
+    final t = _tier(c,
+        isSunday: isSunday,
+        season: seasonRes.season,
+        weekOfSeason: seasonRes.weekOfSeason);
     return t <= primaryTier || identical(c, candidates.first);
   }).toList();
 
@@ -353,9 +387,26 @@ LiturgicalDay resolveLiturgicalDay(
     season: seasonRes.season,
     weekOfSeason: seasonRes.weekOfSeason,
     celebrations: filtered.isEmpty ? candidates : filtered,
-    sundayCycle: isSunday || filtered.first.rank == CelebrationRank.solemnity
-        ? sundayCycleFor(normalized)
-        : null,
+    // Round 13+ fix: this used to read
+    // `isSunday || filtered.first.rank == CelebrationRank.solemnity`,
+    // which set a Sunday (A/B/C) lectionary cycle on *every*
+    // solemnity-ranked primary celebration — including fixed-date
+    // solemnities (Assumption, All Saints, Immaculate Conception,
+    // Christmas, Epiphany, Mary Mother of God, the Annunciation, ...)
+    // whose Mass readings in the Roman Lectionary are one fixed set that
+    // never varies by year. Only Sundays themselves, plus the handful of
+    // movable solemnities of the Lord that carry genuine proper
+    // year-A/B/C readings (Ascension, Corpus Christi, the Most Sacred
+    // Heart of Jesus), should get a cycle here. Trinity Sunday and Christ
+    // the King already fall on a Sunday, so the plain `isSunday` check
+    // already covers them without needing to be named explicitly.
+    sundayCycle:
+        isSunday || _sundayCycleSolemnityKeys.contains(filtered.first.key)
+            ? sundayCycleFor(normalized)
+            : null,
     weekdayCycle: !isSunday ? weekdayCycleFor(normalized) : null,
   );
 }
+
+/// See the doc comment on `sundayCycle:` in [resolveLiturgicalDay] above.
+const _sundayCycleSolemnityKeys = {'ascension', 'corpusChristi', 'sacredHeart'};

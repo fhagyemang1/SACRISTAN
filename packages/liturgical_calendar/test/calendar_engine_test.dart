@@ -328,6 +328,40 @@ void main() {
           isTrue);
     });
 
+    test(
+        'a General Roman Calendar feast fixed to a date within the Octave '
+        'of Easter does not displace the Easter weekday (round 13+ '
+        'regression)', () {
+      // St. Mark the Evangelist is fixed to April 25 every year. Easter
+      // Sunday falls on April 21 in 2030 (see knownEasterDates above), so
+      // the Octave of Easter runs April 21-27 — April 25 (a Thursday)
+      // lands inside it. The Roman Missal's Table of Liturgical Days
+      // (General Norms n. 59, I.2) places every day within the Octave of
+      // Easter at top precedence: nothing, not even a solemnity, may be
+      // celebrated in its place — so St. Mark's feast must not become
+      // `.primary` here, even though a Feast of a Saint (tier II.7)
+      // ordinarily outranks a plain ferial weekday filler. Before this
+      // fix, Easter-Octave weekdays were generic filler entries with no
+      // special precedence protection at all (unlike the explicitly
+      // top-tier Holy Week Monday-Wednesday), so they fell through to
+      // the plain ferial-filler tier and lost to St. Mark's feast tier.
+      final day = resolveLiturgicalDay(DateTime(2030, 4, 25));
+      expect(day.season, LiturgicalSeason.easter);
+      expect(day.weekOfSeason, 1,
+          reason: 'test setup assumption: April 25, 2030 must fall within '
+              'the Octave (week 1) of the Easter season');
+      expect(day.primary.name, 'Easter Weekday, Week 1');
+      expect(day.primary.key, isNot(contains('stMark')));
+      // Still offered as a secondary option, matching how other days in
+      // this app handle a lower-precedence candidate.
+      expect(
+        day.celebrations.any((c) => c.key == 'stMarkEvangelist'),
+        isTrue,
+        reason: 'St. Mark should still be listed as a secondary '
+            'celebration, just not as .primary',
+      );
+    });
+
     test('Christ the King is the Sunday immediately before Advent begins', () {
       final ctk = christTheKing(2026);
       final advent1 = adventFirstSunday(2026);
@@ -371,6 +405,53 @@ void main() {
     test('Weekday cycle: odd calendar years are Cycle I, even are Cycle II', () {
       expect(weekdayCycleFor(DateTime(2025, 6, 1)), WeekdayCycle.i);
       expect(weekdayCycleFor(DateTime(2026, 6, 1)), WeekdayCycle.ii);
+    });
+
+    // Round 13+ fix: `resolveLiturgicalDay` used to set `sundayCycle` on
+    // every solemnity-ranked primary celebration unconditionally — but
+    // most solemnities are fixed-date and use one unchanging set of Mass
+    // readings every year, so tagging them with an A/B/C cycle was simply
+    // wrong data, not just an unused field. Only Sundays themselves, plus
+    // the handful of movable solemnities of the Lord that carry genuine
+    // proper year-A/B/C readings in the Roman Lectionary (Ascension,
+    // Corpus Christi, the Most Sacred Heart of Jesus), should carry one.
+    test('a fixed-date solemnity (Assumption) does not carry a Sunday cycle',
+        () {
+      final day = resolveLiturgicalDay(DateTime(2026, 8, 15));
+      expect(day.rank, CelebrationRank.solemnity);
+      expect(day.sundayCycle, isNull,
+          reason: "the Assumption's Mass readings never vary by the "
+              'three-year Sunday cycle');
+    });
+
+    test('Christmas Day does not carry a Sunday cycle', () {
+      final day = resolveLiturgicalDay(DateTime(2026, 12, 25));
+      expect(day.rank, CelebrationRank.solemnity);
+      expect(day.sundayCycle, isNull);
+    });
+
+    test('Ascension Thursday (not itself a Sunday) still carries the '
+        'Sunday cycle', () {
+      final md = MovableDates.forYear(2026);
+      expect(md.ascensionThursday.weekday, DateTime.thursday,
+          reason: 'test setup assumption: this app shows Ascension on its '
+              'traditional Thursday date, not the transferred Sunday');
+      final day = resolveLiturgicalDay(md.ascensionThursday);
+      expect(day.primary.key, 'ascension');
+      expect(day.sundayCycle, sundayCycleFor(md.ascensionThursday),
+          reason: "Ascension's proper readings vary by the three-year "
+              'A/B/C cycle even though it is celebrated on a Thursday');
+    });
+
+    test('the Most Sacred Heart of Jesus (a Friday) still carries the '
+        'Sunday cycle', () {
+      final md = MovableDates.forYear(2026);
+      expect(md.sacredHeartFriday.weekday, DateTime.friday,
+          reason: 'test setup assumption: Sacred Heart always falls on a '
+              'Friday (Easter + 68 days)');
+      final day = resolveLiturgicalDay(md.sacredHeartFriday);
+      expect(day.primary.key, 'sacredHeart');
+      expect(day.sundayCycle, sundayCycleFor(md.sacredHeartFriday));
     });
   });
 

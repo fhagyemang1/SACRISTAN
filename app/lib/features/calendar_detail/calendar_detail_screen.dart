@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:liturgical_calendar/liturgical_calendar.dart';
 import 'package:provider/provider.dart';
 
@@ -13,7 +14,17 @@ import '../common/color_chip.dart';
 /// engine computes on demand rather than reading a finite bundled table.
 class CalendarDetailScreen extends StatefulWidget {
   final DateTime initialDate;
-  const CalendarDetailScreen({super.key, required this.initialDate});
+  // Round 13+ fix: this screen used to have no way to report its own
+  // internal date navigation (prev/next arrows, the date picker) back up
+  // to AppShell, which only ever updated `_selectedDate` from
+  // DashboardScreen's week-row taps. That left AppShell's "Notes" app-bar
+  // button always attaching a new note to whatever date the Dashboard was
+  // last opened from, silently wrong once the sacristan had navigated
+  // elsewhere in this screen (e.g. browse forward to Christmas Eve, tap
+  // Notes, and the note saves against today instead of Christmas Eve).
+  final ValueChanged<DateTime>? onDateChanged;
+  const CalendarDetailScreen(
+      {super.key, required this.initialDate, this.onDateChanged});
 
   @override
   State<CalendarDetailScreen> createState() => _CalendarDetailScreenState();
@@ -48,8 +59,18 @@ class _CalendarDetailScreenState extends State<CalendarDetailScreen> {
   }
 
   void _shift(int days) {
-    _date = _date.add(Duration(days: days));
+    // Round 13+ fix: `.add(Duration(days: days))` adds an exact 24-hour
+    // offset, not "one calendar day" — Dart's own docs warn this doesn't
+    // correct for DST. On the day local clocks "fall back" (25 real hours
+    // long), adding exactly 24 hours to that day's midnight lands at
+    // 23:00 the *same* calendar day, so tapping "next day" once appeared
+    // to do nothing. Building a new `DateTime` from year/month/day+days
+    // instead lets the constructor normalize the out-of-range day field
+    // (the same way `DateTime(y, m, 32)` rolls into next month), which is
+    // correct regardless of DST.
+    _date = DateTime(_date.year, _date.month, _date.day + days);
     _load();
+    widget.onDateChanged?.call(_date);
   }
 
   Future<void> _pickDate() async {
@@ -66,6 +87,7 @@ class _CalendarDetailScreenState extends State<CalendarDetailScreen> {
     if (picked != null) {
       _date = picked;
       _load();
+      widget.onDateChanged?.call(_date);
     }
   }
 
@@ -91,7 +113,7 @@ class _CalendarDetailScreenState extends State<CalendarDetailScreen> {
                 onPressed: () => _shift(-1),
                 tooltip: 'Previous day',
               ),
-              Text(_formatFullDate(_date),
+              Text(_formatFullDate(context, _date),
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
               IconButton(
                 icon: const Icon(Icons.chevron_right, size: 32),
@@ -206,12 +228,14 @@ class _InfoTile extends StatelessWidget {
 bool _sameDate(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
 
-const _weekdayNames = [
-  'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
-];
-const _monthNames = [
-  'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
-  'September', 'October', 'November', 'December'
-];
-String _formatFullDate(DateTime d) =>
-    '${_weekdayNames[d.weekday - 1]}, ${_monthNames[d.month - 1]} ${d.day}, ${d.year}';
+// Round 13+ fix: this used to be hardcoded English weekday/month name
+// arrays — the one piece of text on this screen that never went through
+// AppLocalizations, unlike the app-bar title and the season/rank rows
+// (which delegate to seasonLabel()/rankLabel()). Switched app language to
+// French or Spanish and this date header stayed in English while
+// everything around it correctly translated. `intl`'s `DateFormat`
+// (already a dependency — see pubspec.yaml) produces a correctly
+// translated, locale-formatted full date for any locale this app ships
+// (en/fr/es) with no hand-maintained name arrays or new ARB keys needed.
+String _formatFullDate(BuildContext context, DateTime d) =>
+    DateFormat.yMMMMEEEEd(Localizations.localeOf(context).toString()).format(d);

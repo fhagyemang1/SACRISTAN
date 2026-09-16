@@ -35,7 +35,14 @@ class _AppShellState extends State<AppShell> {
     final t = AppLocalizations.of(context)!;
     final pages = [
       DashboardScreen(onOpenDate: _openDate),
-      CalendarDetailScreen(initialDate: _selectedDate),
+      CalendarDetailScreen(
+        initialDate: _selectedDate,
+        // Round 13+ fix: without this, the Notes button always attached a
+        // new note to whatever date the Dashboard last opened this tab
+        // from, even after the sacristan had browsed to a different date
+        // with this screen's own prev/next arrows or date picker.
+        onDateChanged: (d) => setState(() => _selectedDate = d),
+      ),
       const ChecklistListScreen(),
       const InventoryScreen(),
       const ReferenceScreen(),

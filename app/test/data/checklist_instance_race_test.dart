@@ -1,4 +1,12 @@
-import 'package:drift/drift.dart' show Value;
+// Round 13 fix: this used to be `import 'package:drift/drift.dart' show
+// Value;` — the `show` clause hid drift's boolean-expression operator
+// extensions (the `&` used below to combine two `.equals()` clauses in a
+// `where`), which `repositories.dart` itself imports unrestricted. That
+// mismatch never surfaced until `flutter analyze` was actually run against
+// this project for the first time on a real toolchain (see
+// docs/ARCHITECTURE.md round 13) — it reported "The operator '&' isn't
+// defined for the type 'Expression<bool>'" at every `&` below.
+import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sacristan/data/database.dart';

@@ -97,6 +97,21 @@ class NotificationsService {
         .resolvePlatformSpecificImplementation<
             IOSFlutterLocalNotificationsPlugin>()
         ?.requestPermissions(alert: true, badge: true, sound: true);
+    // Round 13+ fix: macOS is a genuinely first-class supported platform
+    // elsewhere in this file (included in supportsNativeNotifications
+    // above, and init() explicitly configures `macOS:
+    // DarwinInitializationSettings()`), but `flutter_local_notifications`
+    // treats iOS and macOS as two distinct platform-implementation
+    // classes, each needing its own explicit permission request per the
+    // package's own documented usage — this call was missing entirely, so
+    // resolvePlatformSpecificImplementation<IOSFlutterLocalNotifications
+    // Plugin>() above silently returns null on macOS (the active
+    // implementation there is MacOSFlutterLocalNotificationsPlugin), and
+    // macOS never showed its system notification-authorization prompt.
+    await _plugin
+        .resolvePlatformSpecificImplementation<
+            MacOSFlutterLocalNotificationsPlugin>()
+        ?.requestPermissions(alert: true, badge: true, sound: true);
     await _plugin
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()

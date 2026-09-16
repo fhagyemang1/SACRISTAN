@@ -21,6 +21,23 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
+/// Test-only escape hatch: set to `true` by `widget_test.dart` before it
+/// pumps [DashboardScreen] (directly or via `SacristanApp`/`AppShell`), and
+/// reset to `false` in that test's teardown.
+///
+/// Round-13 follow-up: `flutter test` runs on a virtual clock
+/// (`FakeAsync`), so the real self-rescheduling midnight `Timer` below —
+/// due many hours out — just sits in `FakeAsync.pendingTimers` for the
+/// rest of the test process. The first fix attempt (swap in
+/// `SizedBox.shrink()` and `pump()` before the test body returns, so
+/// `dispose()` cancels the Timer before flutter_test's own end-of-test
+/// "!timersPending" check runs) still failed identically on rerun — the
+/// schedule-then-cancel-before-teardown shape isn't reliable here. So
+/// instead of relying on disposal timing at all, the test disables
+/// scheduling at the source: with this flag set, `_scheduleMidnightRefresh`
+/// is a no-op, so no Timer is ever created for the check to trip on.
+bool debugDisableMidnightRefresh = false;
+
 // Round 12: `AppShell` hosts every tab in an `IndexedStack` (see
 // `features/common/app_shell.dart`), so this State is created once and
 // never disposed for the app's entire session — switching tabs does not
@@ -73,6 +90,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   /// adds or removes an hour, whereas recomputing "next midnight" fresh
   /// each time never can.
   void _scheduleMidnightRefresh() {
+    if (debugDisableMidnightRefresh) return;
     final now = DateTime.now();
     final nextMidnight = DateTime(now.year, now.month, now.day + 1);
     // A one-second cushion so this fires just after midnight rather than

@@ -1,4 +1,8 @@
-import 'package:drift/drift.dart' show OrderingTerm, Value;
+// Round 13 fix: `Value` was shown but never actually used in this file
+// (unlike the sibling race-test files) — `flutter analyze` flagged it as
+// an unused shown name the first time it was run for real. `OrderingTerm`
+// (used by `reorderItem`'s tests below) is kept.
+import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sacristan/data/database.dart';

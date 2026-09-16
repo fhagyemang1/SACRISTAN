@@ -196,6 +196,12 @@ abstract class AppLocalizations {
   /// **'Black'**
   String get colorBlack;
 
+  /// No description provided for @colorGoldPermittedSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **'(gold permitted)'**
+  String get colorGoldPermittedSuffix;
+
   /// No description provided for @rankSolemnity.
   ///
   /// In en, this message translates to:

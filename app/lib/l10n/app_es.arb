@@ -16,6 +16,7 @@
   "colorRose": "Rosa",
   "colorGold": "Oro",
   "colorBlack": "Negro",
+  "colorGoldPermittedSuffix": "(oro permitido)",
   "rankSolemnity": "Solemnidad",
   "rankFeast": "Fiesta",
   "rankMemorial": "Memoria",

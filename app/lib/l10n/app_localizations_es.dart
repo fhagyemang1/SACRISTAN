@@ -57,6 +57,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get colorBlack => 'Negro';
 
   @override
+  String get colorGoldPermittedSuffix => '(oro permitido)';
+
+  @override
   String get rankSolemnity => 'Solemnidad';
 
   @override

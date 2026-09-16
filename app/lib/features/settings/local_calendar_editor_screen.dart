@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:liturgical_calendar/liturgical_calendar.dart';
 import 'package:provider/provider.dart';
 
+import '../../data/admin_session.dart';
 import '../../data/database.dart';
 import '../../data/repositories.dart';
+import 'admin_pin_screen.dart';
 
 /// Lets a parish or diocese add its own fixed-date celebrations — a
 /// patronal feast, a diocesan saint, a parish anniversary — on top of the
@@ -12,6 +14,16 @@ import '../../data/repositories.dart';
 /// picks on-device — the parsing step is the only part that would differ
 /// for an "import" flow; both paths end by calling the same
 /// [CalendarRepository.addLocalEntry]).
+///
+/// Round 13+ fix: add/delete here used to have no [AdminSession] gate at
+/// all, unlike every other Settings screen that edits shared, parish-wide
+/// configuration data (`checklist_template_editor_screen.dart`,
+/// `profiles_screen.dart`, the Reference Library). These entries feed
+/// `CalendarRepository.dayFor()` on every device, so an unlocked-out
+/// volunteer could otherwise silently add junk entries or delete the
+/// parish's genuine patronal-feast entry. Gated the same way those other
+/// screens are: check `AdminSession.isUnlocked` first and show
+/// [AdminPinRequiredSnackBar] instead of performing the action.
 class LocalCalendarEditorScreen extends StatelessWidget {
   const LocalCalendarEditorScreen({super.key});
 
@@ -69,6 +81,11 @@ class LocalCalendarEditorScreen extends StatelessWidget {
 
   Future<void> _confirmDelete(BuildContext context, CalendarRepository repo,
       LocalCalendarEntryRow entry) async {
+    final session = context.read<AdminSession>();
+    if (!session.isUnlocked) {
+      AdminPinRequiredSnackBar.show(context);
+      return;
+    }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -91,6 +108,11 @@ class LocalCalendarEditorScreen extends StatelessWidget {
   }
 
   Future<void> _showAddDialog(BuildContext context, CalendarRepository repo) async {
+    final session = context.read<AdminSession>();
+    if (!session.isUnlocked) {
+      AdminPinRequiredSnackBar.show(context);
+      return;
+    }
     final nameCtrl = TextEditingController();
     final latinCtrl = TextEditingController();
     var month = 1;

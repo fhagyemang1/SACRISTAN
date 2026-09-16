@@ -22,7 +22,13 @@ class LiturgicalColorChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final swatch = swatchFor(color, dark: isDark);
-    final label = _label(context, color) + (goldPermitted ? ' (gold permitted)' : '');
+    // Round 13+ fix: "(gold permitted)" used to be a raw English string
+    // literal concatenated on regardless of the selected app language —
+    // every other piece of text in this widget goes through
+    // AppLocalizations via _label() below. Now uses the same mechanism.
+    final label = goldPermitted
+        ? '${_label(context, color)} ${AppLocalizations.of(context)!.colorGoldPermittedSuffix}'
+        : _label(context, color);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(

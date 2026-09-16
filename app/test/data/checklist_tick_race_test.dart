@@ -1,4 +1,7 @@
-import 'package:drift/drift.dart' show Value;
+// Round 13 fix: see the identical fix and explanation in
+// checklist_instance_race_test.dart — `show Value` hid the `&` operator
+// extension this file's `where` clauses rely on.
+import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sacristan/data/database.dart';
