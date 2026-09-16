@@ -251,7 +251,7 @@ void main() {
       expect(day.weekOfSeason, 3);
       expect(day.primary.rank, CelebrationRank.sunday,
           reason: 'the 3rd Sunday in Ordinary Time must win as .primary — '
-              "a saint's feast fixed to this date must not displace it");
+              'a saint\'s feast fixed to this date must not displace it');
       expect(day.color, LiturgicalColor.green);
       expect(day.primary.key, isNot(contains('conversionOfStPaul')));
       expect(
@@ -420,7 +420,7 @@ void main() {
       final day = resolveLiturgicalDay(DateTime(2026, 8, 15));
       expect(day.rank, CelebrationRank.solemnity);
       expect(day.sundayCycle, isNull,
-          reason: "the Assumption's Mass readings never vary by the "
+          reason: 'the Assumption\'s Mass readings never vary by the '
               'three-year Sunday cycle');
     });
 
@@ -439,7 +439,7 @@ void main() {
       final day = resolveLiturgicalDay(md.ascensionThursday);
       expect(day.primary.key, 'ascension');
       expect(day.sundayCycle, sundayCycleFor(md.ascensionThursday),
-          reason: "Ascension's proper readings vary by the three-year "
+          reason: 'Ascension\'s proper readings vary by the three-year '
               'A/B/C cycle even though it is celebrated on a Thursday');
     });
 

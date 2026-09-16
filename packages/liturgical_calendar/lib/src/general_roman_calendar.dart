@@ -268,7 +268,7 @@ List<FixedCelebration> movableCelebrationsForYear(int year) {
 
   return [
     f(md.ashWednesday, mk('ashWednesday', 'Ash Wednesday', CelebrationRank.ferial, LiturgicalColor.violet, latin: 'Feria IV Cinerum')),
-    f(md.palmSunday, mk('palmSunday', "Palm Sunday of the Lord's Passion", CelebrationRank.sunday, LiturgicalColor.red, latin: 'Dominica in Palmis de Passione Domini')),
+    f(md.palmSunday, mk('palmSunday', 'Palm Sunday of the Lord\'s Passion', CelebrationRank.sunday, LiturgicalColor.red, latin: 'Dominica in Palmis de Passione Domini')),
     // Monday-Wednesday of Holy Week: ordinary ferial rank, but — like Ash
     // Wednesday — top liturgical precedence (Table of Liturgical Days,
     // General Norms n. 59, tier I.2), so nothing (not even a solemnity)
@@ -280,7 +280,7 @@ List<FixedCelebration> movableCelebrationsForYear(int year) {
     f(md.mondayHolyWeek, mk('holyMonday', 'Monday of Holy Week', CelebrationRank.ferial, LiturgicalColor.violet, latin: 'Feria II Hebdomadae Sanctae')),
     f(md.tuesdayHolyWeek, mk('holyTuesday', 'Tuesday of Holy Week', CelebrationRank.ferial, LiturgicalColor.violet, latin: 'Feria III Hebdomadae Sanctae')),
     f(md.wednesdayHolyWeek, mk('holyWednesday', 'Wednesday of Holy Week', CelebrationRank.ferial, LiturgicalColor.violet, latin: 'Feria IV Hebdomadae Sanctae')),
-    f(md.holyThursday, mk('holyThursday', "Holy Thursday — Evening Mass of the Lord's Supper", CelebrationRank.triduum, LiturgicalColor.white, latin: 'Feria V in Cena Domini')),
+    f(md.holyThursday, mk('holyThursday', 'Holy Thursday — Evening Mass of the Lord\'s Supper', CelebrationRank.triduum, LiturgicalColor.white, latin: 'Feria V in Cena Domini')),
     f(md.goodFriday, mk('goodFriday', 'Good Friday of the Passion of the Lord', CelebrationRank.triduum, LiturgicalColor.red, latin: 'Feria VI in Passione Domini')),
     f(md.holySaturday, mk('holySaturday', 'Holy Saturday — the Easter Vigil (after nightfall)', CelebrationRank.triduum, LiturgicalColor.white, gold: true, latin: 'Sabbato Sancto — Vigilia Paschalis')),
     f(md.easterSunday, mk('easterSunday', 'Easter Sunday of the Resurrection of the Lord', CelebrationRank.solemnity, LiturgicalColor.white, gold: true, latin: 'Dominica Resurrectionis')),
