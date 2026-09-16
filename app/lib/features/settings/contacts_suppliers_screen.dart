@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../data/database.dart';
 import '../../data/repositories.dart';
+import '../../l10n/app_localizations.dart';
 import '../common/sms_helper.dart';
 
 /// Manage the Pastor / Sacristan / Server-Leader contacts that low-stock
@@ -30,7 +31,7 @@ class _ContactsSuppliersScreenState extends State<ContactsSuppliersScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Contacts & Suppliers'),
+        title: Text(AppLocalizations.of(context)!.contactsSuppliersTitle),
         bottom: TabBar(controller: _tabs, tabs: const [
           Tab(text: 'Parish Contacts'),
           Tab(text: 'Suppliers'),
@@ -56,12 +57,11 @@ class _ContactsTab extends StatelessWidget {
         builder: (context, snap) {
           final contacts = snap.data ?? const <Contact>[];
           if (contacts.isEmpty) {
-            return const Center(
+            return Center(
               child: Padding(
-                padding: EdgeInsets.all(24),
+                padding: const EdgeInsets.all(24),
                 child: Text(
-                  'Add phone numbers for the Pastor, Sacristan, and Server '
-                  'Leader so low-stock alerts can text them directly.',
+                  AppLocalizations.of(context)!.contactsEmptyState,
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -101,7 +101,7 @@ class _ContactsTab extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.add),
-        label: const Text('Add contact'),
+        label: Text(AppLocalizations.of(context)!.contactsAddContact),
         onPressed: () => _showAddContactDialog(context, repo),
       ),
     );
@@ -185,12 +185,11 @@ class _SuppliersTab extends StatelessWidget {
         builder: (context, snap) {
           final suppliers = snap.data ?? const <Supplier>[];
           if (suppliers.isEmpty) {
-            return const Center(
+            return Center(
               child: Padding(
-                padding: EdgeInsets.all(24),
+                padding: const EdgeInsets.all(24),
                 child: Text(
-                  'Add your usual suppliers here so a pastor can text an '
-                  'order directly, or reach them online once connected.',
+                  AppLocalizations.of(context)!.suppliersEmptyState,
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -237,7 +236,7 @@ class _SuppliersTab extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.add),
-        label: const Text('Add supplier'),
+        label: Text(AppLocalizations.of(context)!.suppliersAddSupplier),
         onPressed: () => _showAddSupplierDialog(context, repo),
       ),
     );

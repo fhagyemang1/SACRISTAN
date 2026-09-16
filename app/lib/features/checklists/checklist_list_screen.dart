@@ -81,13 +81,13 @@ class _ChecklistListScreenState extends State<ChecklistListScreen> {
             stream: checklistRepo.watchTemplatesFor(type),
             builder: (context, snap) {
               final templates = snap.data ?? const [];
+              final loc = AppLocalizations.of(context)!;
               if (templates.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  child: Text('No templates yet.'),
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Text(loc.checklistsEmptyState),
                 );
               }
-              final loc = AppLocalizations.of(context)!;
               return Column(
                 children: templates
                     .map((t) => Card(

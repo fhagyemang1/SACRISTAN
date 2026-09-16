@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../data/admin_session.dart';
 import '../../data/database.dart';
 import '../../data/repositories.dart';
+import '../../l10n/app_localizations.dart';
 import 'admin_pin_screen.dart';
 
 /// Round 11: the screen `checklist_detail_screen.dart`'s empty-state text
@@ -11,9 +12,15 @@ import 'admin_pin_screen.dart';
 /// sacristans toward ("Settings > Manage Checklist Templates") — but until
 /// this round it did not exist. Lets an admin (PIN-gated, same as the
 /// Reference Library) add new checklist templates and manage each
-/// template's items. Deleting a whole template is deliberately not offered
-/// here — see the long comment on `ChecklistRepository.addTemplate` in
-/// repositories.dart for why.
+/// template's items.
+///
+/// Round 14+: whole-template deletion is now offered, as an archive/
+/// restore toggle rather than a real delete — see the doc comment on
+/// `ChecklistRepository.archiveTemplate` for why a hard delete still
+/// isn't. This list shows archived templates too (greyed out, labeled),
+/// since an admin managing templates needs to be able to find and
+/// restore one — only the "start a checklist" flow
+/// (`checklist_list_screen.dart`, via `watchTemplatesFor`) hides them.
 class ChecklistTemplateEditorScreen extends StatelessWidget {
   const ChecklistTemplateEditorScreen({super.key});
 
@@ -21,18 +28,19 @@ class ChecklistTemplateEditorScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final repo = context.read<ChecklistRepository>();
     final session = context.watch<AdminSession>();
+    final loc = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Manage Checklist Templates')),
+      appBar: AppBar(title: Text(loc.manageTemplatesTitle)),
       body: StreamBuilder<List<ChecklistTemplate>>(
         stream: repo.watchAllTemplates(),
         builder: (context, snap) {
           final templates = snap.data ?? const <ChecklistTemplate>[];
           if (templates.isEmpty) {
-            return const Center(
+            return Center(
               child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text('No templates yet.', textAlign: TextAlign.center),
+                padding: const EdgeInsets.all(24),
+                child: Text(loc.manageTemplatesEmptyState, textAlign: TextAlign.center),
               ),
             );
           }
@@ -41,18 +49,34 @@ class ChecklistTemplateEditorScreen extends StatelessWidget {
             itemCount: templates.length,
             itemBuilder: (context, i) {
               final t = templates[i];
-              return Card(
-                child: ListTile(
-                  leading: Icon(t.phase == 'pre'
-                      ? Icons.play_circle_outline
-                      : Icons.stop_circle_outlined),
-                  title: Text(t.name),
-                  subtitle: Text(
-                      '${_massTypeLabel(t.massType)} — ${t.phase == 'pre' ? 'Before Mass' : 'After Mass'}'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => TemplateItemsEditorScreen(template: t),
-                  )),
+              final archived = t.archivedAt != null;
+              return Opacity(
+                opacity: archived ? 0.6 : 1.0,
+                child: Card(
+                  child: ListTile(
+                    leading: Icon(t.phase == 'pre'
+                        ? Icons.play_circle_outline
+                        : Icons.stop_circle_outlined),
+                    title: Text(t.name),
+                    subtitle: Text(
+                        '${_massTypeLabel(t.massType)} — ${t.phase == 'pre' ? 'Before Mass' : 'After Mass'}'
+                        '${archived ? ' · Archived' : ''}'),
+                    trailing: session.isUnlocked
+                        ? IconButton(
+                            icon: Icon(archived
+                                ? Icons.unarchive_outlined
+                                : Icons.archive_outlined),
+                            tooltip: archived
+                                ? 'Restore template'
+                                : 'Archive template',
+                            onPressed: () =>
+                                _confirmArchiveToggle(context, repo, t, archived),
+                          )
+                        : const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => TemplateItemsEditorScreen(template: t),
+                    )),
+                  ),
                 ),
               );
             },
@@ -61,10 +85,42 @@ class ChecklistTemplateEditorScreen extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.add),
-        label: const Text('Add template'),
+        label: Text(loc.manageTemplatesAddTemplate),
         onPressed: () => _showAddTemplateDialog(context, repo, session),
       ),
     );
+  }
+
+  Future<void> _confirmArchiveToggle(BuildContext context, ChecklistRepository repo,
+      ChecklistTemplate t, bool archived) async {
+    if (archived) {
+      // Restoring is low-risk and immediately reversible right back from
+      // this same screen — no confirmation needed, unlike archiving.
+      await repo.unarchiveTemplate(t.id);
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Archive this template?'),
+        content: Text(
+            '"${t.name}" will no longer be offered when starting a new '
+            "checklist, but it isn't deleted — its items and every past "
+            'checklist made from it stay exactly as they are, and you can '
+            'restore it here at any time.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Archive')),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await repo.archiveTemplate(t.id);
+    }
   }
 
   Future<void> _showAddTemplateDialog(
@@ -198,10 +254,10 @@ class TemplateItemsEditorScreen extends StatelessWidget {
         builder: (context, snap) {
           final items = snap.data ?? const <ChecklistItem>[];
           if (items.isEmpty) {
-            return const Center(
+            return Center(
               child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text('No items yet. Tap + to add one.',
+                padding: const EdgeInsets.all(24),
+                child: Text(AppLocalizations.of(context)!.templateItemsEmptyState,
                     textAlign: TextAlign.center),
               ),
             );
@@ -249,7 +305,7 @@ class TemplateItemsEditorScreen extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.add),
-        label: const Text('Add item'),
+        label: Text(AppLocalizations.of(context)!.addItem),
         onPressed: () => _showAddItemDialog(context, repo, session),
       ),
     );

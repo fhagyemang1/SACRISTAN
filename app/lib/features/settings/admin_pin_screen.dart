@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../data/admin_session.dart';
 import '../../data/database.dart';
 import '../../data/repositories.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Set up or enter the admin PIN. The first profile with role
 /// [ProfileRole.admin] is treated as "the" admin profile for PIN purposes
@@ -65,7 +66,7 @@ class _AdminPinScreenState extends State<AdminPinScreen> {
     final session = context.read<AdminSession>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Admin PIN')),
+      appBar: AppBar(title: Text(AppLocalizations.of(context)!.adminPinTitle)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : Padding(

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../data/admin_session.dart';
 import '../../data/database.dart';
 import '../../data/repositories.dart';
+import '../../l10n/app_localizations.dart';
 import '../settings/admin_pin_screen.dart';
 
 /// Offline reference library: vestment/vessel glossary with illustrations,
@@ -59,7 +60,7 @@ class _ReferenceScreenState extends State<ReferenceScreen>
       ),
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.add),
-        label: const Text('Add entry'),
+        label: Text(AppLocalizations.of(context)!.referenceAddEntry),
         onPressed: () => _showAddDialog(
             context, repo, _categories[_tabs.index]),
       ),
@@ -183,9 +184,9 @@ class _EntryList extends StatelessWidget {
         }
         final entries = snap.data!;
         if (entries.isEmpty) {
-          return const Center(child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Text('No entries in this category yet.',
+          return Center(child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(AppLocalizations.of(context)!.referenceEmptyState,
                 textAlign: TextAlign.center),
           ));
         }

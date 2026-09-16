@@ -33,5 +33,43 @@
   "beforeMass": "Before Mass",
   "afterMass": "After Mass",
   "addItem": "Add item",
-  "addNote": "Add note"
+  "addNote": "Add note",
+  "checklistsEmptyState": "No templates yet.",
+  "notesTitle": "Notes — {date}",
+  "@notesTitle": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "notesEmptyState": "No notes for this date yet.",
+  "referenceAddEntry": "Add entry",
+  "referenceEmptyState": "No entries in this category yet.",
+  "localCalendarTitle": "Parish / Diocesan Calendar",
+  "localCalendarEmptyState": "No local entries yet.\nAdd your patronal feast, a diocesan saint, or your parish anniversary — it will show up on the Dashboard and Calendar automatically, every year, fully offline.",
+  "localCalendarAddEntry": "Add entry",
+  "contactsSuppliersTitle": "Contacts & Suppliers",
+  "contactsEmptyState": "Add phone numbers for the Pastor, Sacristan, and Server Leader so low-stock alerts can text them directly.",
+  "contactsAddContact": "Add contact",
+  "suppliersEmptyState": "Add your usual suppliers here so a pastor can text an order directly, or reach them online once connected.",
+  "suppliersAddSupplier": "Add supplier",
+  "adminPinTitle": "Admin PIN",
+  "languageTitle": "Language",
+  "remindersTitle": "Reminders",
+  "remindersEmptyState": "No reminders yet. Add one for the next feast-day prep, linen laundering, or restock.",
+  "remindersAddReminder": "Add reminder",
+  "profilesTitle": "Sacristan Profiles",
+  "profilesEmptyState": "No profiles yet. Add volunteers and assign roles.",
+  "profilesAddProfile": "Add profile",
+  "manageTemplatesTitle": "Manage Checklist Templates",
+  "manageTemplatesEmptyState": "No templates yet.",
+  "manageTemplatesAddTemplate": "Add template",
+  "templateItemsEmptyState": "No items yet. Tap + to add one.",
+  "settingsAccessSection": "Access",
+  "settingsChecklistsSection": "Checklists",
+  "settingsCalendarSection": "Calendar",
+  "settingsNotificationsContactsSection": "Notifications & Contacts",
+  "settingsAppSection": "App",
+  "inventoryTitle": "Inventory"
 }

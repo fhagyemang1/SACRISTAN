@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../data/active_profile_controller.dart';
 import '../../data/database.dart';
 import '../../data/repositories.dart';
 import '../common/big_checkbox_tile.dart';
@@ -24,6 +25,15 @@ class ChecklistDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final repo = context.read<ChecklistRepository>();
+    // Round 14+: `ChecklistTicks.doneByProfileId` used to be dead data —
+    // every call here passed `null`, because there was no concept of
+    // "who's using the app right now." `ActiveProfileController` (see
+    // its own doc comment) now supplies that, set from the Sacristan
+    // Profiles screen. `context.watch` (not `read`) deliberately, so
+    // switching the active profile mid-checklist takes effect on the
+    // very next tap without needing to reopen this screen.
+    final activeProfileId =
+        context.watch<ActiveProfileController>().activeProfileId;
 
     return Scaffold(
       appBar: AppBar(title: Text(title)),
@@ -83,8 +93,8 @@ class ChecklistDetailScreen extends StatelessWidget {
                               '(untitled item)',
                           latinTerm: item.latinTerm,
                           checked: isDone,
-                          onChanged: (v) =>
-                              repo.setTick(instanceId, item.id, v, null),
+                          onChanged: (v) => repo.setTick(
+                              instanceId, item.id, v, activeProfileId),
                         );
                       },
                     ),

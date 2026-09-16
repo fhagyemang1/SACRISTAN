@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../data/admin_session.dart';
 import '../../data/database.dart';
 import '../../data/repositories.dart';
+import '../../l10n/app_localizations.dart';
 import 'admin_pin_screen.dart';
 
 /// Lets a parish or diocese add its own fixed-date celebrations — a
@@ -30,21 +31,19 @@ class LocalCalendarEditorScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final repo = context.read<CalendarRepository>();
+    final loc = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: const Text('Parish / Diocesan Calendar')),
+      appBar: AppBar(title: Text(loc.localCalendarTitle)),
       body: StreamBuilder<List<LocalCalendarEntryRow>>(
         stream: repo.watchLocalEntries(),
         builder: (context, snap) {
           final entries = snap.data ?? const <LocalCalendarEntryRow>[];
           if (entries.isEmpty) {
-            return const Center(
+            return Center(
               child: Padding(
-                padding: EdgeInsets.all(24),
+                padding: const EdgeInsets.all(24),
                 child: Text(
-                  'No local entries yet.\nAdd your patronal feast, a diocesan '
-                  'saint, or your parish anniversary — it will show up on the '
-                  'Dashboard and Calendar automatically, every year, fully '
-                  'offline.',
+                  loc.localCalendarEmptyState,
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -73,7 +72,7 @@ class LocalCalendarEditorScreen extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.add),
-        label: const Text('Add entry'),
+        label: Text(loc.localCalendarAddEntry),
         onPressed: () => _showAddDialog(context, repo),
       ),
     );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/locale_controller.dart';
+import '../../l10n/app_localizations.dart';
 
 const _names = {
   'en': 'English',
@@ -16,7 +17,7 @@ class LanguageScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = context.watch<LocaleController>();
     return Scaffold(
-      appBar: AppBar(title: const Text('Language')),
+      appBar: AppBar(title: Text(AppLocalizations.of(context)!.languageTitle)),
       // Round 9: Radio/RadioListTile's own `groupValue`/`onChanged` are
       // deprecated as of Flutter's Radio API redesign — the group is now
       // owned by an ancestor `RadioGroup`, with each RadioListTile taking

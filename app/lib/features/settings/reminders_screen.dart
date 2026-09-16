@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../data/database.dart';
 import '../../data/notifications_service.dart';
 import '../../data/repositories.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Create and cancel local reminders — feast-day prep, linen laundering,
 /// supply restocking. Scheduling goes through [NotificationsService],
@@ -17,19 +18,19 @@ class RemindersScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final repo = context.read<ReminderRepository>();
+    final loc = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: const Text('Reminders')),
+      appBar: AppBar(title: Text(loc.remindersTitle)),
       body: StreamBuilder<List<Reminder>>(
         stream: repo.watchActive(),
         builder: (context, snap) {
           final reminders = snap.data ?? const <Reminder>[];
           if (reminders.isEmpty) {
-            return const Center(
+            return Center(
               child: Padding(
-                padding: EdgeInsets.all(24),
+                padding: const EdgeInsets.all(24),
                 child: Text(
-                  'No reminders yet. Add one for the next feast-day prep, '
-                  'linen laundering, or restock.',
+                  loc.remindersEmptyState,
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -42,10 +43,13 @@ class RemindersScreen extends StatelessWidget {
               final r = reminders[i];
               return Card(
                 child: ListTile(
-                  leading: const Icon(Icons.notifications_active_outlined),
+                  leading: Icon(r.repeatRule != null
+                      ? Icons.repeat
+                      : Icons.notifications_active_outlined),
                   title: Text(r.title),
                   subtitle: Text(
-                      '${_fmt(r.triggerAt)}${r.body != null ? ' · ${r.body}' : ''}'),
+                      '${_fmt(r.triggerAt)}${_repeatSuffix(r.repeatRule)}'
+                      '${r.body != null ? ' · ${r.body}' : ''}'),
                   trailing: IconButton(
                     icon: const Icon(Icons.close),
                     tooltip: 'Cancel reminder',
@@ -62,7 +66,7 @@ class RemindersScreen extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.add_alarm),
-        label: const Text('Add reminder'),
+        label: Text(loc.remindersAddReminder),
         onPressed: () => _showAddDialog(context, repo),
       ),
     );
@@ -78,6 +82,12 @@ class RemindersScreen extends StatelessWidget {
     final titleCtrl = TextEditingController();
     final bodyCtrl = TextEditingController();
     var when = DateTime.now().add(const Duration(days: 1));
+    // Round 14+: `Reminders.repeatRule` was stored (null | 'weekly' |
+    // 'yearly') since round 2 but had no UI ever writing anything but
+    // null to it — see notifications_service.dart's `scheduleReminder`
+    // doc comment for how this now maps onto a real OS-level repeating
+    // alarm rather than just being redundant stored data.
+    String? repeatRule;
     // Round 11: guards the "Add" button below against a double-tap, which
     // would otherwise create two separate `Reminder` rows and schedule two
     // separate OS-level notifications for what the sacristan intended as
@@ -125,6 +135,21 @@ class RemindersScreen extends StatelessWidget {
                       date.year, date.month, date.day, time.hour, time.minute));
                 },
               ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String?>(
+                initialValue: repeatRule,
+                decoration: const InputDecoration(labelText: 'Repeat'),
+                items: const [
+                  DropdownMenuItem(value: null, child: Text("Doesn't repeat")),
+                  DropdownMenuItem(
+                      value: 'weekly',
+                      child: Text('Weekly (same day of week and time)')),
+                  DropdownMenuItem(
+                      value: 'yearly',
+                      child: Text('Yearly (same date and time)')),
+                ],
+                onChanged: (v) => setState(() => repeatRule = v),
+              ),
             ],
           ),
           actions: [
@@ -143,6 +168,7 @@ class RemindersScreen extends StatelessWidget {
                               ? null
                               : bodyCtrl.text.trim(),
                           triggerAt: when,
+                          repeatRule: repeatRule,
                         );
                         // The `Reminder` row above is already saved and
                         // useful on its own (it still shows in this list)
@@ -163,6 +189,7 @@ class RemindersScreen extends StatelessWidget {
                                 ? null
                                 : bodyCtrl.text.trim(),
                             triggerAt: when,
+                            repeatRule: repeatRule,
                           );
                         } catch (_) {
                           if (context.mounted) Navigator.of(context).pop();
@@ -194,3 +221,14 @@ class RemindersScreen extends StatelessWidget {
 String _fmt(DateTime d) =>
     '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')} '
     '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+
+String _repeatSuffix(String? repeatRule) {
+  switch (repeatRule) {
+    case 'weekly':
+      return ' · repeats weekly';
+    case 'yearly':
+      return ' · repeats yearly';
+    default:
+      return '';
+  }
+}

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../data/active_profile_controller.dart';
+import '../../data/database.dart';
+import '../../data/repositories.dart';
 import '../../l10n/app_localizations.dart';
 import 'admin_pin_screen.dart';
 import 'checklist_template_editor_screen.dart';
@@ -19,7 +23,7 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(title: Text(AppLocalizations.of(context)!.navSettings)),
       body: ListView(
         children: [
-          const _SectionHeader('Access'),
+          _SectionHeader(AppLocalizations.of(context)!.settingsAccessSection),
           ListTile(
             leading: const Icon(Icons.lock_outline),
             title: const Text('Admin PIN'),
@@ -33,13 +37,13 @@ class SettingsScreen extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.people_outline),
             title: const Text('Sacristan Profiles'),
-            subtitle: const Text('Add volunteers, assign roles'),
+            subtitle: const _ActiveProfileSubtitle(),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const ProfilesScreen())),
           ),
           const Divider(),
-          const _SectionHeader('Checklists'),
+          _SectionHeader(AppLocalizations.of(context)!.settingsChecklistsSection),
           ListTile(
             leading: const Icon(Icons.checklist_outlined),
             title: const Text('Manage Checklist Templates'),
@@ -51,7 +55,7 @@ class SettingsScreen extends StatelessWidget {
                 builder: (_) => const ChecklistTemplateEditorScreen())),
           ),
           const Divider(),
-          const _SectionHeader('Calendar'),
+          _SectionHeader(AppLocalizations.of(context)!.settingsCalendarSection),
           ListTile(
             leading: const Icon(Icons.event_note_outlined),
             title: const Text('Parish/Diocesan Calendar'),
@@ -63,7 +67,7 @@ class SettingsScreen extends StatelessWidget {
                 builder: (_) => const LocalCalendarEditorScreen())),
           ),
           const Divider(),
-          const _SectionHeader('Notifications & Contacts'),
+          _SectionHeader(AppLocalizations.of(context)!.settingsNotificationsContactsSection),
           ListTile(
             leading: const Icon(Icons.notifications_outlined),
             title: const Text('Reminders'),
@@ -85,7 +89,7 @@ class SettingsScreen extends StatelessWidget {
                 builder: (_) => const ContactsSuppliersScreen())),
           ),
           const Divider(),
-          const _SectionHeader('App'),
+          _SectionHeader(AppLocalizations.of(context)!.settingsAppSection),
           ListTile(
             leading: const Icon(Icons.language_outlined),
             title: const Text('Language'),
@@ -108,6 +112,35 @@ class SettingsScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Round 14+: shows who's currently identified as the app's active user
+/// (see `active_profile_controller.dart`), so it's visible from Settings
+/// without having to open the Sacristan Profiles screen just to check.
+/// Combines [ActiveProfileController] (just an id) with [ProfileRepository]
+/// (the actual list of profiles, for the display name) — a separate
+/// widget rather than inlined in [SettingsScreen] specifically so this
+/// stream subscription only exists while this row is actually visible.
+class _ActiveProfileSubtitle extends StatelessWidget {
+  const _ActiveProfileSubtitle();
+
+  @override
+  Widget build(BuildContext context) {
+    final activeId = context.watch<ActiveProfileController>().activeProfileId;
+    if (activeId == null) {
+      return const Text('Add volunteers, assign roles');
+    }
+    final repo = context.read<ProfileRepository>();
+    return StreamBuilder<List<Profile>>(
+      stream: repo.watchAll(),
+      builder: (context, snap) {
+        final match = (snap.data ?? const <Profile>[])
+            .where((p) => p.id == activeId);
+        if (match.isEmpty) return const Text('Add volunteers, assign roles');
+        return Text('Currently: ${match.first.displayName}');
+      },
     );
   }
 }

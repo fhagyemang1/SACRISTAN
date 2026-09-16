@@ -109,4 +109,104 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get addNote => 'Add note';
+
+  @override
+  String get checklistsEmptyState => 'No templates yet.';
+
+  @override
+  String notesTitle(String date) {
+    return 'Notes — $date';
+  }
+
+  @override
+  String get notesEmptyState => 'No notes for this date yet.';
+
+  @override
+  String get referenceAddEntry => 'Add entry';
+
+  @override
+  String get referenceEmptyState => 'No entries in this category yet.';
+
+  @override
+  String get localCalendarTitle => 'Parish / Diocesan Calendar';
+
+  @override
+  String get localCalendarEmptyState =>
+      'No local entries yet.\nAdd your patronal feast, a diocesan saint, or your parish anniversary — it will show up on the Dashboard and Calendar automatically, every year, fully offline.';
+
+  @override
+  String get localCalendarAddEntry => 'Add entry';
+
+  @override
+  String get contactsSuppliersTitle => 'Contacts & Suppliers';
+
+  @override
+  String get contactsEmptyState =>
+      'Add phone numbers for the Pastor, Sacristan, and Server Leader so low-stock alerts can text them directly.';
+
+  @override
+  String get contactsAddContact => 'Add contact';
+
+  @override
+  String get suppliersEmptyState =>
+      'Add your usual suppliers here so a pastor can text an order directly, or reach them online once connected.';
+
+  @override
+  String get suppliersAddSupplier => 'Add supplier';
+
+  @override
+  String get adminPinTitle => 'Admin PIN';
+
+  @override
+  String get languageTitle => 'Language';
+
+  @override
+  String get remindersTitle => 'Reminders';
+
+  @override
+  String get remindersEmptyState =>
+      'No reminders yet. Add one for the next feast-day prep, linen laundering, or restock.';
+
+  @override
+  String get remindersAddReminder => 'Add reminder';
+
+  @override
+  String get profilesTitle => 'Sacristan Profiles';
+
+  @override
+  String get profilesEmptyState =>
+      'No profiles yet. Add volunteers and assign roles.';
+
+  @override
+  String get profilesAddProfile => 'Add profile';
+
+  @override
+  String get manageTemplatesTitle => 'Manage Checklist Templates';
+
+  @override
+  String get manageTemplatesEmptyState => 'No templates yet.';
+
+  @override
+  String get manageTemplatesAddTemplate => 'Add template';
+
+  @override
+  String get templateItemsEmptyState => 'No items yet. Tap + to add one.';
+
+  @override
+  String get settingsAccessSection => 'Access';
+
+  @override
+  String get settingsChecklistsSection => 'Checklists';
+
+  @override
+  String get settingsCalendarSection => 'Calendar';
+
+  @override
+  String get settingsNotificationsContactsSection => 'Notifications & Contacts';
+
+  @override
+  String get settingsAppSection => 'App';
+
+  @override
+  String get inventoryTitle => 'Inventory';
 }

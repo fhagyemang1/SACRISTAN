@@ -128,7 +128,8 @@ class ChecklistRepository {
 
   Stream<List<ChecklistTemplate>> watchTemplatesFor(MassType type) {
     return (db.select(db.checklistTemplates)
-          ..where((t) => t.massType.equalsValue(type)))
+          ..where((t) =>
+              t.massType.equalsValue(type) & t.archivedAt.isNull()))
         .watch();
   }
 
@@ -178,19 +179,40 @@ class ChecklistRepository {
     return id;
   }
 
-  /// Deleting a *template* is deliberately not offered: `ChecklistItems`
-  /// cascades on template delete, but `ChecklistInstances.templateId`
-  /// does not (see `database.dart`) — a template that any Mass has ever
-  /// used has real historical checklist rows referencing it, and SQLite's
-  /// default foreign-key behavior would reject the delete outright rather
-  /// than silently orphaning that history. Handling that well (block with
-  /// an explanation? cascade and destroy real history? soft-hide
-  /// instead?) is a product decision, not a bug fix — deliberately left
-  /// for a future round rather than guessed at here, the same judgment
-  /// call round 9 made for the `CheckedState` migration. Items within a
-  /// template, and whole templates that were *just* added and never
-  /// used, can still be managed via [addItem]/[deleteItem]/[reorderItem]
-  /// and [addTemplate] below.
+  /// Soft-deletes a template — see the doc comment below on why this
+  /// replaces a real delete. Idempotent (archiving an already-archived
+  /// template just overwrites `archivedAt` with a fresh timestamp).
+  Future<void> archiveTemplate(String templateId) async {
+    await (db.update(db.checklistTemplates)..where((t) => t.id.equals(templateId)))
+        .write(ChecklistTemplatesCompanion(archivedAt: Value(DateTime.now())));
+  }
+
+  /// Undoes [archiveTemplate]: the template becomes selectable again in
+  /// [watchTemplatesFor] (the "start a checklist" flow). Nothing about a
+  /// template's items or historical instances is ever affected by either
+  /// direction of this toggle — only `archivedAt` changes.
+  Future<void> unarchiveTemplate(String templateId) async {
+    await (db.update(db.checklistTemplates)..where((t) => t.id.equals(templateId)))
+        .write(const ChecklistTemplatesCompanion(archivedAt: Value(null)));
+  }
+
+  /// Round 14+: a real *hard* delete on a template is still deliberately
+  /// not offered — `ChecklistItems` cascades on template delete, but
+  /// `ChecklistInstances.templateId` does not (see `database.dart`), so a
+  /// template that any Mass has ever used has real historical checklist
+  /// rows referencing it, and SQLite's default foreign-key behavior would
+  /// reject the delete outright rather than silently orphaning that
+  /// history. Rather than guess at how to handle that (the product
+  /// decision this comment used to leave open — block outright? cascade
+  /// and destroy real history? soft-hide instead?), the resolution is
+  /// [archiveTemplate]/[unarchiveTemplate] below: archiving never deletes
+  /// a row anywhere, it only sets `archivedAt`, which [watchTemplatesFor]
+  /// filters on so an archived template stops being offered when starting
+  /// a new checklist — while [watchAllTemplates] (the management screen)
+  /// still shows it, so an admin can review or restore it, and every past
+  /// `ChecklistInstance`/`ChecklistTick` that references it stays exactly
+  /// as readable as it always was. Items within a template can still be
+  /// managed via [addItem]/[deleteItem]/[reorderItem] as before.
   // Same shape of risk this round already found and fixed twice
   // (`findOrCreateInstance`, `setTick`): [addItem]/[deleteItem]/
   // [reorderItem] below each read the template's current item list and
@@ -676,6 +698,13 @@ class SettingsRepository {
     await db.into(db.appSettings).insertOnConflictUpdate(
           AppSettingsCompanion.insert(key: key, value: value),
         );
+  }
+
+  /// Round 14+: added alongside [ActiveProfileController], which needs to
+  /// be able to clear a setting entirely (an app with no active profile
+  /// selected) rather than only ever overwrite it with a new value.
+  Future<void> deleteValue(String key) async {
+    await (db.delete(db.appSettings)..where((s) => s.key.equals(key))).go();
   }
 }
 

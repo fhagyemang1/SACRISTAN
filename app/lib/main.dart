@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
+import 'data/active_profile_controller.dart';
 import 'data/admin_session.dart';
 import 'data/database.dart';
 import 'data/locale_controller.dart';
@@ -27,8 +28,14 @@ Future<void> main() async {
 
   final settingsRepo = SettingsRepository(db);
   final initialLocale = await LocaleController.loadInitial(settingsRepo);
+  final initialActiveProfileId =
+      await ActiveProfileController.loadInitial(settingsRepo);
 
-  runApp(SacristanApp(db: db, initialLocale: initialLocale));
+  runApp(SacristanApp(
+    db: db,
+    initialLocale: initialLocale,
+    initialActiveProfileId: initialActiveProfileId,
+  ));
 }
 
 /// Populates the built-in checklist templates on first launch only. Safe
@@ -79,7 +86,13 @@ Future<void> seedBuiltinTemplatesIfNeeded(SacristanDatabase db) async {
 class SacristanApp extends StatelessWidget {
   final SacristanDatabase db;
   final Locale initialLocale;
-  const SacristanApp({super.key, required this.db, required this.initialLocale});
+  final String? initialActiveProfileId;
+  const SacristanApp({
+    super.key,
+    required this.db,
+    required this.initialLocale,
+    this.initialActiveProfileId,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -101,6 +114,9 @@ class SacristanApp extends StatelessWidget {
         ChangeNotifierProvider<AdminSession>(create: (_) => AdminSession()),
         ChangeNotifierProvider<LocaleController>(
             create: (_) => LocaleController(settingsRepo, initialLocale)),
+        ChangeNotifierProvider<ActiveProfileController>(
+            create: (_) => ActiveProfileController(
+                settingsRepo, initialActiveProfileId)),
       ],
       child: Consumer<LocaleController>(
         builder: (context, localeController, _) => MaterialApp(

@@ -1,11 +1,13 @@
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:sacristan/data/admin_session.dart';
 import 'package:sacristan/data/database.dart';
 import 'package:sacristan/data/repositories.dart';
 import 'package:sacristan/features/settings/local_calendar_editor_screen.dart';
+import 'package:sacristan/l10n/app_localizations.dart';
 
 /// Regression test for a round-11 bug: the "Add local calendar entry"
 /// dialog's Day dropdown always offered 1-31 regardless of the selected
@@ -73,7 +75,30 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
+    // Round 14+, fourth follow-up: this screen's "Add entry" FAB label
+    // (and other strings across the app) now reads from
+    // `AppLocalizations.of(context)!` instead of a hardcoded literal, as
+    // part of this round's localization pass — but a bare `MaterialApp`
+    // like the one below has no `localizationsDelegates`/
+    // `supportedLocales` configured, unlike the real app's root widget
+    // (`SacristanApp` in main.dart, which registers all four delegates —
+    // see that file's own round-8 doc comment on why they matter).
+    // Without them, `AppLocalizations.of(context)` returns null and the
+    // `!` throws — but only inside the one small widget that calls it
+    // (`Text(loc.localCalendarAddEntry)`), which Flutter's debug-mode
+    // per-widget error boundary replaces with a red error box rather
+    // than crashing the whole tree. The rest of the screen still
+    // rendered, which is why this surfaced as `find.text('Add entry')`
+    // finding zero widgets rather than as a build-time crash. Fixed by
+    // registering the same delegates `SacristanApp` always does.
     await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [Locale('en'), Locale('fr'), Locale('es')],
       home: MultiProvider(
         providers: [
           Provider<CalendarRepository>.value(value: repo),

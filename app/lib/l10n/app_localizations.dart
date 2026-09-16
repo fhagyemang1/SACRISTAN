@@ -303,6 +303,192 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add note'**
   String get addNote;
+
+  /// No description provided for @checklistsEmptyState.
+  ///
+  /// In en, this message translates to:
+  /// **'No templates yet.'**
+  String get checklistsEmptyState;
+
+  /// No description provided for @notesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes — {date}'**
+  String notesTitle(String date);
+
+  /// No description provided for @notesEmptyState.
+  ///
+  /// In en, this message translates to:
+  /// **'No notes for this date yet.'**
+  String get notesEmptyState;
+
+  /// No description provided for @referenceAddEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Add entry'**
+  String get referenceAddEntry;
+
+  /// No description provided for @referenceEmptyState.
+  ///
+  /// In en, this message translates to:
+  /// **'No entries in this category yet.'**
+  String get referenceEmptyState;
+
+  /// No description provided for @localCalendarTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Parish / Diocesan Calendar'**
+  String get localCalendarTitle;
+
+  /// No description provided for @localCalendarEmptyState.
+  ///
+  /// In en, this message translates to:
+  /// **'No local entries yet.\nAdd your patronal feast, a diocesan saint, or your parish anniversary — it will show up on the Dashboard and Calendar automatically, every year, fully offline.'**
+  String get localCalendarEmptyState;
+
+  /// No description provided for @localCalendarAddEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Add entry'**
+  String get localCalendarAddEntry;
+
+  /// No description provided for @contactsSuppliersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Contacts & Suppliers'**
+  String get contactsSuppliersTitle;
+
+  /// No description provided for @contactsEmptyState.
+  ///
+  /// In en, this message translates to:
+  /// **'Add phone numbers for the Pastor, Sacristan, and Server Leader so low-stock alerts can text them directly.'**
+  String get contactsEmptyState;
+
+  /// No description provided for @contactsAddContact.
+  ///
+  /// In en, this message translates to:
+  /// **'Add contact'**
+  String get contactsAddContact;
+
+  /// No description provided for @suppliersEmptyState.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your usual suppliers here so a pastor can text an order directly, or reach them online once connected.'**
+  String get suppliersEmptyState;
+
+  /// No description provided for @suppliersAddSupplier.
+  ///
+  /// In en, this message translates to:
+  /// **'Add supplier'**
+  String get suppliersAddSupplier;
+
+  /// No description provided for @adminPinTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin PIN'**
+  String get adminPinTitle;
+
+  /// No description provided for @languageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get languageTitle;
+
+  /// No description provided for @remindersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders'**
+  String get remindersTitle;
+
+  /// No description provided for @remindersEmptyState.
+  ///
+  /// In en, this message translates to:
+  /// **'No reminders yet. Add one for the next feast-day prep, linen laundering, or restock.'**
+  String get remindersEmptyState;
+
+  /// No description provided for @remindersAddReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Add reminder'**
+  String get remindersAddReminder;
+
+  /// No description provided for @profilesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sacristan Profiles'**
+  String get profilesTitle;
+
+  /// No description provided for @profilesEmptyState.
+  ///
+  /// In en, this message translates to:
+  /// **'No profiles yet. Add volunteers and assign roles.'**
+  String get profilesEmptyState;
+
+  /// No description provided for @profilesAddProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Add profile'**
+  String get profilesAddProfile;
+
+  /// No description provided for @manageTemplatesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage Checklist Templates'**
+  String get manageTemplatesTitle;
+
+  /// No description provided for @manageTemplatesEmptyState.
+  ///
+  /// In en, this message translates to:
+  /// **'No templates yet.'**
+  String get manageTemplatesEmptyState;
+
+  /// No description provided for @manageTemplatesAddTemplate.
+  ///
+  /// In en, this message translates to:
+  /// **'Add template'**
+  String get manageTemplatesAddTemplate;
+
+  /// No description provided for @templateItemsEmptyState.
+  ///
+  /// In en, this message translates to:
+  /// **'No items yet. Tap + to add one.'**
+  String get templateItemsEmptyState;
+
+  /// No description provided for @settingsAccessSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Access'**
+  String get settingsAccessSection;
+
+  /// No description provided for @settingsChecklistsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Checklists'**
+  String get settingsChecklistsSection;
+
+  /// No description provided for @settingsCalendarSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar'**
+  String get settingsCalendarSection;
+
+  /// No description provided for @settingsNotificationsContactsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications & Contacts'**
+  String get settingsNotificationsContactsSection;
+
+  /// No description provided for @settingsAppSection.
+  ///
+  /// In en, this message translates to:
+  /// **'App'**
+  String get settingsAppSection;
+
+  /// No description provided for @inventoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Inventory'**
+  String get inventoryTitle;
 }
 
 class _AppLocalizationsDelegate

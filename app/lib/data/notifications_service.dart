@@ -123,6 +123,25 @@ class NotificationsService {
     required String title,
     String? body,
     required DateTime triggerAt,
+    // Round 14+: `Reminders.repeatRule` (null | 'weekly' | 'yearly') has
+    // been stored since round 2 but was never actually read anywhere —
+    // every reminder only ever fired once, no matter what a future UI
+    // might eventually pass here. Wired up now by mapping directly onto
+    // `flutter_local_notifications`' own built-in repeat mechanism,
+    // `matchDateTimeComponents`, rather than building any app-level
+    // re-scheduling loop: passing it turns a single `zonedSchedule` call
+    // into a real OS-level *repeating* alarm, which the OS keeps firing
+    // on schedule even if this app is never opened again between
+    // occurrences — exactly the property a "relaunder the purificators
+    // every Sunday" or "restock incense every year before Advent"
+    // reminder needs, and something an app-level reschedule-on-launch
+    // approach could not provide on its own. `DateTimeComponents.
+    // dayOfWeekAndTime` matches only the weekday + time (the plugin's own
+    // documented meaning) — i.e. weekly. `DateTimeComponents.dateAndTime`
+    // matches month + day + time but *not* year — i.e. yearly. Both
+    // confirmed against the package's own current published API docs,
+    // not assumed.
+    String? repeatRule,
   }) async {
     await init();
     if (!supportsNativeNotifications) return; // see PLATFORM NOTE above
@@ -131,6 +150,11 @@ class NotificationsService {
     // deterministically from the string id — see [stableNotificationId]
     // for why that must NOT be `.hashCode`.
     final notifId = stableNotificationId(id);
+    final matchComponents = switch (repeatRule) {
+      'weekly' => DateTimeComponents.dayOfWeekAndTime,
+      'yearly' => DateTimeComponents.dateAndTime,
+      _ => null,
+    };
     await _plugin.zonedSchedule(
       notifId,
       title,
@@ -151,6 +175,7 @@ class NotificationsService {
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: matchComponents,
     );
   }
 

@@ -41,8 +41,9 @@ class _NotesScreenState extends State<NotesScreen> {
   @override
   Widget build(BuildContext context) {
     final repo = context.read<NotesRepository>();
+    final loc = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: Text('Notes — ${_fmt(widget.date)}')),
+      appBar: AppBar(title: Text(loc.notesTitle(_fmt(widget.date)))),
       body: Column(
         children: [
           Expanded(
@@ -51,10 +52,10 @@ class _NotesScreenState extends State<NotesScreen> {
               builder: (context, snap) {
                 final notes = snap.data ?? const <Note>[];
                 if (notes.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Padding(
-                      padding: EdgeInsets.all(24),
-                      child: Text('No notes for this date yet.'),
+                      padding: const EdgeInsets.all(24),
+                      child: Text(loc.notesEmptyState),
                     ),
                   );
                 }
@@ -105,7 +106,7 @@ class _NotesScreenState extends State<NotesScreen> {
                               if (mounted) setState(() => _submitting = false);
                             }
                           },
-                    child: Text(AppLocalizations.of(context)!.addNote),
+                    child: Text(loc.addNote),
                   ),
                 ],
               ),

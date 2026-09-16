@@ -32,7 +32,7 @@ class InventoryScreen extends StatelessWidget {
     final repo = context.read<InventoryRepository>();
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Inventory'),
+        title: Text(AppLocalizations.of(context)!.inventoryTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.sms_outlined),
@@ -83,6 +83,8 @@ class InventoryScreen extends StatelessWidget {
                         if (item.color != null) item.color!,
                         if (item.condition != null) item.condition!,
                         if (item.storageLocation != null) 'at ${item.storageLocation}',
+                        if (item.lowStockThreshold != null)
+                          'low stock at ≤${item.lowStockThreshold}',
                       ].join(' · ')),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -90,7 +92,9 @@ class InventoryScreen extends StatelessWidget {
                           if (item.lowStockFlag)
                             const Padding(
                               padding: EdgeInsets.only(right: 8),
-                              child: Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                              child: Icon(Icons.warning_amber_rounded,
+                                  color: Colors.orange,
+                                  semanticLabel: 'Low stock'),
                             ),
                           Text('×${item.quantity}',
                               style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -221,6 +225,15 @@ class InventoryScreen extends StatelessWidget {
     var category = existing?.category ?? InventoryCategory.vessel;
     var quantity = existing?.quantity ?? 1;
     var lowStock = existing?.lowStockFlag ?? false;
+    // Round 14+: `lowStockThreshold` used to be dead schema — stored but
+    // never read or written anywhere (see round 11's finding). Wired up
+    // here: an admin can set a numeric "flag when quantity drops to or
+    // below this" threshold, and it's combined with the existing manual
+    // switch below (rather than replacing it) so an item with no natural
+    // threshold — e.g. "the good chalice is being repaired" — can still
+    // be flagged by hand exactly as before.
+    final thresholdCtrl = TextEditingController(
+        text: existing?.lowStockThreshold?.toString() ?? '');
     // Round 11: guards the Add/Save button below against a double-tap
     // creating a duplicate item. This only bites the *Add* path in
     // practice (`existing == null`, so `repo.upsert` generates a fresh
@@ -281,9 +294,21 @@ class InventoryScreen extends StatelessWidget {
                     ),
                   ],
                 ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: thresholdCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Low-stock threshold (optional)',
+                    helperText: 'Flag this item automatically once quantity '
+                        'drops to or below this number',
+                  ),
+                ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Flag as low stock'),
+                  title: const Text('Also flag as low stock manually'),
+                  subtitle: const Text('Use this for items with no natural '
+                      'threshold, e.g. "out for repair"'),
                   value: lowStock,
                   onChanged: (v) => setState(() => lowStock = v),
                 ),
@@ -328,6 +353,17 @@ class InventoryScreen extends StatelessWidget {
                       if (nameCtrl.text.trim().isEmpty) return;
                       setState(() => submitting = true);
                       try {
+                        final threshold =
+                            int.tryParse(thresholdCtrl.text.trim());
+                        // The stored flag is the OR of the manual switch and
+                        // the threshold comparison, computed once here at
+                        // save time — every existing reader of
+                        // `lowStockFlag` (the list's warning icon, CSV
+                        // export, the SMS alert, `watchLowStock()`) keeps
+                        // working unchanged, and now genuinely reflects the
+                        // threshold instead of that column being dead data.
+                        final effectiveLowStock = lowStock ||
+                            (threshold != null && quantity <= threshold);
                         await repo.upsert(InventoryItemsCompanion(
                           id: existing != null
                               ? Value(existing.id)
@@ -341,7 +377,8 @@ class InventoryScreen extends StatelessWidget {
                               ? null
                               : conditionCtrl.text.trim()),
                           quantity: Value(quantity),
-                          lowStockFlag: Value(lowStock),
+                          lowStockThreshold: Value(threshold),
+                          lowStockFlag: Value(effectiveLowStock),
                         ));
                         if (context.mounted) Navigator.of(context).pop();
                       } finally {

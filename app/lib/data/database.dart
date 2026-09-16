@@ -69,6 +69,16 @@ class ChecklistTemplates extends Table {
   TextColumn get phase => text()(); // 'pre' | 'post'
   BoolColumn get isBuiltin => boolean().withDefault(const Constant(false))();
   TextColumn get locale => text().withDefault(const Constant('en'))();
+  // Round 14+: deletion was deliberately never offered for a template with
+  // real usage history — see the long comment on
+  // `ChecklistRepository.addTemplate` this column now resolves. Null means
+  // active and selectable as usual; non-null means an admin archived it —
+  // hidden from the "start a checklist" template picker
+  // (`watchTemplatesFor`), but the template row, its items, and every past
+  // `ChecklistInstance`/`ChecklistTick` that references it are left
+  // completely untouched, so historical checklists stay fully viewable.
+  // An admin can restore it from the template management screen.
+  DateTimeColumn get archivedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
