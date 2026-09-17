@@ -151,10 +151,51 @@ final List<FixedCelebration> generalRomanCalendarFixed = [
       color: LiturgicalColor.red,
       source: _c,
       isFeastOfTheLord: true)),
+  // Round 15: this file's own doc comment (line 16-20 above) flags it as
+  // "a representative subset," not the complete calendar — but that gap
+  // is exactly what let a real sacristan open the app on Sept 16, 2026
+  // and see a generic Ordinary Time weekday instead of the actual
+  // Memorial of Ss. Cornelius and Cyprian (red), because nothing between
+  // Sept 14 (Exaltation of the Cross, already present) and Sept 29
+  // (Archangels, already present) existed for `resolveLiturgicalDay` to
+  // find. Filling in that specific date plus its immediate obligatory
+  // neighbors (the ones that actually change the day's color/rank, as
+  // opposed to optional memorials, which `_tier()` in calendar_engine.dart
+  // already ranks below the generic ferial filler at tier 9 and so never
+  // override the day's color) — verified against Catholic Culture's own
+  // published Liturgical Year Calendar overview for September rather than
+  // assumed from memory.
+  const FixedCelebration(9, 15, Celebration(
+      key: 'ourLadyOfSorrows',
+      name: 'Our Lady of Sorrows',
+      latinName: 'Beatae Mariae Virginis Perdolentis',
+      rank: CelebrationRank.memorial,
+      color: LiturgicalColor.white,
+      source: _c)),
+  const FixedCelebration(9, 16, Celebration(
+      key: 'ssCorneliusAndCyprian',
+      name: 'Ss. Cornelius, Pope, and Cyprian, Bishop, Martyrs',
+      latinName: 'Ss. Cornelii et Cypriani',
+      rank: CelebrationRank.memorial,
+      color: LiturgicalColor.red,
+      source: _c)),
+  const FixedCelebration(9, 21, Celebration(
+      key: 'stMatthewApostle',
+      name: 'St. Matthew, Apostle and Evangelist',
+      latinName: 'Sancti Matthaei, Apostoli et Evangelistae',
+      rank: CelebrationRank.feast,
+      color: LiturgicalColor.red,
+      source: _c)),
   const FixedCelebration(9, 29, Celebration(
       key: 'archangels',
       name: 'Ss. Michael, Gabriel, and Raphael, Archangels',
       rank: CelebrationRank.feast,
+      color: LiturgicalColor.white,
+      source: _c)),
+  const FixedCelebration(9, 30, Celebration(
+      key: 'stJerome',
+      name: 'St. Jerome, Priest and Doctor of the Church',
+      rank: CelebrationRank.memorial,
       color: LiturgicalColor.white,
       source: _c)),
   const FixedCelebration(10, 4, Celebration(

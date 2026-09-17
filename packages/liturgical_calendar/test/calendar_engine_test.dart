@@ -493,4 +493,55 @@ void main() {
           isTrue);
     });
   });
+
+  // Round 15 regression test: a real sacristan reported that Sept 16, 2026
+  // (the Memorial of Ss. Cornelius and Cyprian, red) showed no special
+  // color at all in the app — `generalRomanCalendarFixed` simply had no
+  // entry for that date (it jumped from Sept 14 straight to Sept 29; see
+  // that file's own doc comment on why it's a deliberately partial
+  // subset). Checked across three different years, including a leap year,
+  // since this is a fixed civil-calendar date rather than an Easter-
+  // relative one, so there's no year-dependent computation to exercise —
+  // the point of testing more than one year is just to rule out an
+  // off-by-one in how FixedCelebration's month/day match against
+  // `normalized`, not to check a formula.
+  group('September fixed celebrations (round 15 fix)', () {
+    for (final year in [2024, 2025, 2026]) {
+      test('$year-09-16 is Ss. Cornelius and Cyprian, red, memorial', () {
+        final day = resolveLiturgicalDay(DateTime(year, 9, 16));
+        expect(day.primary.name, contains('Cornelius'));
+        expect(day.primary.name, contains('Cyprian'));
+        expect(day.rank, CelebrationRank.memorial);
+        expect(day.color, LiturgicalColor.red);
+      });
+    }
+
+    test('2026-09-15 is Our Lady of Sorrows, white, memorial', () {
+      final day = resolveLiturgicalDay(DateTime(2026, 9, 15));
+      expect(day.primary.name, contains('Sorrows'));
+      expect(day.rank, CelebrationRank.memorial);
+      expect(day.color, LiturgicalColor.white);
+    });
+
+    test('2026-09-21 is St. Matthew, red, feast', () {
+      final day = resolveLiturgicalDay(DateTime(2026, 9, 21));
+      expect(day.primary.name, contains('Matthew'));
+      expect(day.rank, CelebrationRank.feast);
+      expect(day.color, LiturgicalColor.red);
+    });
+
+    test('2026-09-30 is St. Jerome, white, memorial', () {
+      final day = resolveLiturgicalDay(DateTime(2026, 9, 30));
+      expect(day.primary.name, contains('Jerome'));
+      expect(day.rank, CelebrationRank.memorial);
+      expect(day.color, LiturgicalColor.white);
+    });
+
+    test('Sept 14 and Sept 29 (already-present entries) are unaffected', () {
+      final exaltation = resolveLiturgicalDay(DateTime(2026, 9, 14));
+      expect(exaltation.primary.name, contains('Exaltation'));
+      final archangels = resolveLiturgicalDay(DateTime(2026, 9, 29));
+      expect(archangels.primary.name, contains('Archangels'));
+    });
+  });
 }

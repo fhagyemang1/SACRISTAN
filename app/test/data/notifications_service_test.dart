@@ -62,4 +62,49 @@ void main() {
       expect(results.length, greaterThan(40));
     });
   });
+
+  // Round 15: [ReminderReliability] backs the "Fix notifications" banner
+  // on Settings > Reminders (reminders_screen.dart) — its only job is
+  // turning two independent booleans into one "is everything actually
+  // going to work" answer, so that's the one property worth pinning down
+  // here. The permission-check methods that produce those booleans
+  // (`hasNotificationPermission`, `hasExactAlarmPermission`, etc.) go
+  // through real platform channels and aren't meaningfully unit-testable
+  // without a running Android/iOS environment — this deliberately tests
+  // only the pure logic layered on top of them.
+  group('ReminderReliability.isFullyReliable', () {
+    test('true only when both permissions are granted', () {
+      expect(
+          const ReminderReliability(
+                  notificationsAllowed: true, exactAlarmsAllowed: true)
+              .isFullyReliable,
+          isTrue);
+    });
+
+    test('false when notifications are off, even if exact alarms are fine',
+        () {
+      expect(
+          const ReminderReliability(
+                  notificationsAllowed: false, exactAlarmsAllowed: true)
+              .isFullyReliable,
+          isFalse);
+    });
+
+    test('false when exact alarms are off, even if notifications are fine',
+        () {
+      expect(
+          const ReminderReliability(
+                  notificationsAllowed: true, exactAlarmsAllowed: false)
+              .isFullyReliable,
+          isFalse);
+    });
+
+    test('false when both are off', () {
+      expect(
+          const ReminderReliability(
+                  notificationsAllowed: false, exactAlarmsAllowed: false)
+              .isFullyReliable,
+          isFalse);
+    });
+  });
 }

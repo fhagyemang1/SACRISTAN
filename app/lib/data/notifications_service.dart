@@ -1,8 +1,17 @@
 import 'dart:io';
 
+import 'package:android_intent_plus/android_intent.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
+
+/// Round 15: must match `applicationId` in android/app/build.gradle.kts —
+/// there is no dependency-free way to read it back at runtime from pure
+/// Dart, and pulling in a package (e.g. package_info_plus) just to avoid
+/// one hardcoded string felt like a worse trade than this comment. Only
+/// [NotificationsService.openBatteryOptimizationSettings] uses it.
+const _androidPackageName = 'com.example.sacristan';
 
 /// Thin wrapper around `flutter_local_notifications`. Every notification
 /// here is scheduled entirely on-device — there is no server-side push,
@@ -112,10 +121,116 @@ class NotificationsService {
         .resolvePlatformSpecificImplementation<
             MacOSFlutterLocalNotificationsPlugin>()
         ?.requestPermissions(alert: true, badge: true, sound: true);
-    await _plugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.requestNotificationsPermission();
+    final android = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    await android?.requestNotificationsPermission();
+    // Round 15 fix: this app's own AndroidManifest.xml has, since round
+    // 13, carried a comment explaining that Android 12+ needs
+    // SCHEDULE_EXACT_ALARM *declared* before an exact reminder can be
+    // scheduled at all — but declaring it was never enough on its own.
+    // On Android 14+ (API 34+) this permission is no longer auto-granted
+    // at install the way it was on 12-13; the user has to explicitly
+    // allow it, and nothing in this app ever asked. The practical result
+    // (confirmed against a real report: a reminder silently never fired,
+    // with no error visible anywhere) was `scheduleReminder`'s
+    // `AndroidScheduleMode.exactAllowWhileIdle` call throwing at
+    // schedule time — caught in reminders_screen.dart's "Add reminder"
+    // dialog, which could only tell the sacristan to go check their
+    // device settings themselves, with no indication of which setting.
+    // `requestExactAlarmsPermission()` is `flutter_local_notifications`'
+    // own wrapper for the system "Alarms & reminders" screen: it opens
+    // that screen directly, pre-scoped to this app, for a single-tap
+    // Allow, rather than making anyone find it inside Settings. See also
+    // [checkReliability]/[requestReliabilityFixes] below, which let
+    // Settings > Reminders re-offer this same fix later — this
+    // first-launch call alone can't cover a permission the user denied,
+    // revoked afterward, or a phone that wasn't done setting itself up
+    // yet the first time the app ran.
+    await android?.requestExactAlarmsPermission();
+  }
+
+  /// Whether Android has a real, native "post a notification" permission
+  /// currently granted for this app. Always true on platforms without
+  /// that concept (iOS/macOS handle their own authorization prompt inside
+  /// [requestPermissions] instead; Windows has no notification backend at
+  /// all — see the class doc comment).
+  Future<bool> hasNotificationPermission() async {
+    if (!Platform.isAndroid) return true;
+    final android = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    return await android?.areNotificationsEnabled() ?? true;
+  }
+
+  /// Whether this app is currently allowed to schedule *exact* alarms —
+  /// the specific permission [scheduleReminder] needs for
+  /// `AndroidScheduleMode.exactAllowWhileIdle` to actually fire on time
+  /// rather than being silently dropped or coalesced into an inexact,
+  /// battery-friendly window Android may delay by hours. See the long
+  /// comment on [requestPermissions] above for why this can be false even
+  /// after `requestPermissions()` has already run once.
+  Future<bool> hasExactAlarmPermission() async {
+    if (!Platform.isAndroid) return true;
+    final android = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    return await android?.canScheduleExactNotifications() ?? true;
+  }
+
+  /// A snapshot of whether this device will actually deliver a scheduled
+  /// reminder, for the "Fix notifications" card on Settings > Reminders
+  /// (see `reminders_screen.dart`) — added because, before round 15, the
+  /// only way a sacristan found out a reminder hadn't fired was the
+  /// reminder simply never firing, with the app never having said
+  /// anything about why or what to do about it.
+  Future<ReminderReliability> checkReliability() async {
+    await init();
+    return ReminderReliability(
+      notificationsAllowed: await hasNotificationPermission(),
+      exactAlarmsAllowed: await hasExactAlarmPermission(),
+    );
+  }
+
+  /// Walks the sacristan through every permission a reminder needs, one
+  /// native system prompt/screen at a time, instead of telling them to go
+  /// find it themselves — this is the actual "Fix notifications" action
+  /// behind the Reminders-screen banner. Returns the resulting state so
+  /// the caller can show what (if anything) is still not fixed, such as
+  /// an OEM battery/autostart manager this app has no public API to reach
+  /// (see [openBatteryOptimizationSettings]'s doc comment).
+  Future<ReminderReliability> requestReliabilityFixes() async {
+    await requestPermissions();
+    return checkReliability();
+  }
+
+  /// Opens Android's standard "ignore battery optimizations for this app"
+  /// system dialog, pre-scoped to Sacristan — a single Allow/Deny tap,
+  /// not a Settings menu to hunt through. This is the one lever
+  /// `flutter_local_notifications` itself doesn't expose (it only wraps
+  /// the notification and exact-alarm permissions above), because
+  /// battery-optimization exemption isn't specific to notifications.
+  ///
+  /// This does NOT cover manufacturer-specific "autostart manager" /
+  /// "protected apps" lists that some Android skins (Xiaomi, Vivo,
+  /// Infinix/Transsion's XOS, Oppo, Huawei, ...) layer on top of stock
+  /// Android's own battery optimization system — those have no public,
+  /// documented Intent action at all, vary by OEM and OS version, and a
+  /// wrong guess risks opening the wrong screen entirely on some device.
+  /// The Reminders-screen banner that calls this says so explicitly
+  /// rather than silently pretending this one tap fixes everything.
+  Future<void> openBatteryOptimizationSettings() async {
+    if (!Platform.isAndroid) return;
+    const intent = AndroidIntent(
+      action: 'android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
+      data: 'package:$_androidPackageName',
+    );
+    try {
+      await intent.launch();
+    } on PlatformException {
+      // Some OEM builds refuse this intent outright rather than just
+      // showing nothing useful; there is nothing more specific this app
+      // can do about that from here, so this is swallowed rather than
+      // crashing the screen that triggered it — the caller's UI already
+      // states this step may need to be done manually.
+    }
   }
 
   Future<void> scheduleReminder({
@@ -184,6 +299,24 @@ class NotificationsService {
     if (!supportsNativeNotifications) return;
     await _plugin.cancel(stableNotificationId(id));
   }
+}
+
+/// Round 15: a plain-data snapshot of whether reminders will actually
+/// fire on this device right now — see [NotificationsService
+/// .checkReliability]. Deliberately not a bool: the "Fix notifications"
+/// card (reminders_screen.dart) needs to say *which* thing is off so its
+/// button/status text can be specific rather than a generic "something's
+/// wrong, good luck."
+class ReminderReliability {
+  final bool notificationsAllowed;
+  final bool exactAlarmsAllowed;
+
+  const ReminderReliability({
+    required this.notificationsAllowed,
+    required this.exactAlarmsAllowed,
+  });
+
+  bool get isFullyReliable => notificationsAllowed && exactAlarmsAllowed;
 }
 
 /// Round 10: turns a reminder id into the int id

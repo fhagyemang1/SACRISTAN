@@ -39,6 +39,16 @@ dependencies:
   flutter_local_notifications: ^17.2.2
   timezone: ^0.9.4
 
+  # Round 15: opens the exact Android system screens a sacristan would
+  # otherwise have to hunt for by hand — "Ignore battery optimizations"
+  # for this app specifically (see NotificationsService
+  # .openBatteryOptimizationSettings) — from a single in-app button. Not
+  # used for anything beyond that one settings intent; the exact-alarm
+  # and notification permission requests are handled by
+  # flutter_local_notifications itself (see that file), which already
+  # deep-links to the right screen without needing this package.
+  android_intent_plus: ^6.1.0
+
   # SMS deep-link (opens the device's own Messages app pre-filled; no SMS gateway/account needed)
   url_launcher: ^6.3.0
 

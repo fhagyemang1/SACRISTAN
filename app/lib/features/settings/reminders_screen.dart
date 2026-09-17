@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -21,48 +23,63 @@ class RemindersScreen extends StatelessWidget {
     final loc = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(title: Text(loc.remindersTitle)),
-      body: StreamBuilder<List<Reminder>>(
-        stream: repo.watchActive(),
-        builder: (context, snap) {
-          final reminders = snap.data ?? const <Reminder>[];
-          if (reminders.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  loc.remindersEmptyState,
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            );
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: reminders.length,
-            itemBuilder: (context, i) {
-              final r = reminders[i];
-              return Card(
-                child: ListTile(
-                  leading: Icon(r.repeatRule != null
-                      ? Icons.repeat
-                      : Icons.notifications_active_outlined),
-                  title: Text(r.title),
-                  subtitle: Text(
-                      '${_fmt(r.triggerAt)}${_repeatSuffix(r.repeatRule)}'
-                      '${r.body != null ? ' · ${r.body}' : ''}'),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.close),
-                    tooltip: 'Cancel reminder',
-                    onPressed: () async {
-                      await repo.cancel(r.id);
-                      await NotificationsService.instance.cancel(r.id);
-                    },
-                  ),
-                ),
-              );
-            },
-          );
-        },
+      body: Column(
+        children: [
+          // Round 15: added after a real sacristan's reminder silently
+          // never fired and the only diagnosis path was a long back-
+          // and-forth guessing which of several OEM-specific Settings
+          // screens was the culprit — see this widget's own doc comment
+          // below. Sits above the list so it's the first thing anyone
+          // with a broken reminder sees, but renders as nothing at all
+          // once (or if) everything checks out, so it never nags someone
+          // whose reminders are working fine.
+          const _ReliabilityBanner(),
+          Expanded(
+            child: StreamBuilder<List<Reminder>>(
+              stream: repo.watchActive(),
+              builder: (context, snap) {
+                final reminders = snap.data ?? const <Reminder>[];
+                if (reminders.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        loc.remindersEmptyState,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  );
+                }
+                return ListView.builder(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: reminders.length,
+                  itemBuilder: (context, i) {
+                    final r = reminders[i];
+                    return Card(
+                      child: ListTile(
+                        leading: Icon(r.repeatRule != null
+                            ? Icons.repeat
+                            : Icons.notifications_active_outlined),
+                        title: Text(r.title),
+                        subtitle: Text(
+                            '${_fmt(r.triggerAt)}${_repeatSuffix(r.repeatRule)}'
+                            '${r.body != null ? ' · ${r.body}' : ''}'),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.close),
+                          tooltip: 'Cancel reminder',
+                          onPressed: () async {
+                            await repo.cancel(r.id);
+                            await NotificationsService.instance.cancel(r.id);
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.add_alarm),
@@ -211,6 +228,158 @@ class RemindersScreen extends StatelessWidget {
                     },
               child: const Text('Add'),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Round 15: this screen's own "the notification couldn't be scheduled —
+/// check notification/alarm permissions in your device settings" snackbar
+/// (see `_showAddDialog` above) was the app's only acknowledgement that
+/// this class of failure even existed, and it told the sacristan nothing
+/// about *which* setting, on *this* phone. Every Android manufacturer
+/// buries the real culprit — usually the exact-alarm permission, but
+/// sometimes battery optimization, sometimes an OEM-only autostart
+/// manager with no public API at all — behind a different menu path, so
+/// "go check your settings" is close to useless advice for anyone who
+/// isn't already comfortable digging through Android internals. This
+/// banner checks the two permissions this app can actually verify and
+/// fix from inside itself ([NotificationsService.checkReliability]) and
+/// offers a single button that walks through both native system
+/// prompts/screens directly — no navigating required — plus a second,
+/// clearly-labeled button for the one OS-level lever
+/// (`flutter_local_notifications` doesn't cover) this app can open but
+/// not fully automate. Renders nothing while checking and nothing once
+/// everything's fine, so it never becomes a permanent nag for the common
+/// case where reminders just work.
+class _ReliabilityBanner extends StatefulWidget {
+  const _ReliabilityBanner();
+
+  @override
+  State<_ReliabilityBanner> createState() => _ReliabilityBannerState();
+}
+
+class _ReliabilityBannerState extends State<_ReliabilityBanner> {
+  ReminderReliability? _status;
+  bool _fixing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+  }
+
+  Future<void> _refresh() async {
+    // Windows has no native notification backend at all (see
+    // NotificationsService's class doc comment) — nothing here would be
+    // actionable, so this banner simply never appears there rather than
+    // reporting a "problem" the sacristan has no way to fix.
+    if (!NotificationsService.instance.supportsNativeNotifications) return;
+    final status = await NotificationsService.instance.checkReliability();
+    if (mounted) setState(() => _status = status);
+  }
+
+  Future<void> _fixNow() async {
+    setState(() => _fixing = true);
+    try {
+      final status = await NotificationsService.instance.requestReliabilityFixes();
+      if (mounted) setState(() => _status = status);
+    } finally {
+      if (mounted) setState(() => _fixing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final status = _status;
+    // Still checking, or Windows/already-fine: nothing to show. Checking
+    // `isFullyReliable` rather than inverting a "hasProblem" flag keeps
+    // the "nothing wrong -> nothing shown" case the obvious one to read.
+    if (status == null || status.isFullyReliable) return const SizedBox.shrink();
+
+    final missing = <String>[
+      if (!status.notificationsAllowed) 'notifications are turned off for this app',
+      if (!status.exactAlarmsAllowed)
+        "this app isn't allowed to schedule exact alarms",
+    ];
+
+    return Card(
+      color: Theme.of(context).colorScheme.errorContainer,
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.notifications_off_outlined,
+                    color: Theme.of(context).colorScheme.onErrorContainer),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Reminders may not go off on this phone',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onErrorContainer,
+                        fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Right now, ${missing.join(' and ')} — so a scheduled reminder '
+              'can silently never show up. Tap below and this app will ask '
+              "for what it needs directly; you won't need to go hunting "
+              'through your phone\'s settings yourself.',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: Theme.of(context).colorScheme.onErrorContainer),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                FilledButton.icon(
+                  icon: _fixing
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.build_outlined, size: 18),
+                  label: Text(_fixing ? 'Checking…' : 'Fix notifications'),
+                  onPressed: _fixing ? null : _fixNow,
+                ),
+                if (Platform.isAndroid)
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.battery_saver_outlined, size: 18),
+                    label: const Text('Also check battery settings'),
+                    onPressed: () =>
+                        NotificationsService.instance.openBatteryOptimizationSettings(),
+                  ),
+              ],
+            ),
+            if (Platform.isAndroid)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  'Some phones (Xiaomi, Vivo, Infinix/Tecno, Oppo, Huawei, and '
+                  'others) have their own extra battery-saving screen — often '
+                  'called "Autostart," "App management," or similar — that '
+                  "this app can't open for you directly. If reminders still "
+                  "don't fire after fixing the above, look there too.",
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onErrorContainer
+                          .withValues(alpha: 0.85),
+                      fontStyle: FontStyle.italic),
+                ),
+              ),
           ],
         ),
       ),
