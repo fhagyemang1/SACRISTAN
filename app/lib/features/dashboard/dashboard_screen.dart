@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:liturgical_calendar/liturgical_calendar.dart';
 import 'package:provider/provider.dart';
 
+import '../../data/database.dart';
 import '../../data/repositories.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme/app_theme.dart';
@@ -24,35 +25,8 @@ class DashboardScreen extends StatefulWidget {
 /// Test-only escape hatch: set to `true` by `widget_test.dart` before it
 /// pumps [DashboardScreen] (directly or via `SacristanApp`/`AppShell`), and
 /// reset to `false` in that test's teardown.
-///
-/// Round-13 follow-up: `flutter test` runs on a virtual clock
-/// (`FakeAsync`), so the real self-rescheduling midnight `Timer` below —
-/// due many hours out — just sits in `FakeAsync.pendingTimers` for the
-/// rest of the test process. The first fix attempt (swap in
-/// `SizedBox.shrink()` and `pump()` before the test body returns, so
-/// `dispose()` cancels the Timer before flutter_test's own end-of-test
-/// "!timersPending" check runs) still failed identically on rerun — the
-/// schedule-then-cancel-before-teardown shape isn't reliable here. So
-/// instead of relying on disposal timing at all, the test disables
-/// scheduling at the source: with this flag set, `_scheduleMidnightRefresh`
-/// is a no-op, so no Timer is ever created for the check to trip on.
 bool debugDisableMidnightRefresh = false;
 
-// Round 12: `AppShell` hosts every tab in an `IndexedStack` (see
-// `features/common/app_shell.dart`), so this State is created once and
-// never disposed for the app's entire session — switching tabs does not
-// re-run `initState`. Without anything below, "today" was only ever
-// (re)computed at that one `initState` call and on a manual pull-to-refresh,
-// so a device left open/running past local midnight — a real scenario for
-// a sacristy desktop/tablet, or a phone just left unlocked overnight — kept
-// showing yesterday's liturgical color/rank/season indefinitely, which
-// defeats the entire point of this being the zero-tap "today" screen.
-// Two independent triggers cover the two ways that staleness actually
-// happens: `didChangeAppLifecycleState` catches resuming from the
-// background (including when the OS suspended this app's timers while
-// backgrounded, which could cause the Timer below to fire late or not at
-// all until resume) and the self-rescheduling `Timer` catches the app
-// simply staying in the foreground/running headless across midnight.
 class _DashboardScreenState extends State<DashboardScreen>
     with WidgetsBindingObserver {
   late Future<LiturgicalDay> _today;
@@ -82,20 +56,10 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
-  /// Schedules a one-shot `Timer` for just after the next local midnight,
-  /// which reloads "today" and then reschedules itself for the midnight
-  /// after that. Deliberately a self-rescheduling one-shot rather than a
-  /// single `Timer.periodic(Duration(days: 1))`: a fixed 24-hour period
-  /// would drift off local midnight the very first time a DST transition
-  /// adds or removes an hour, whereas recomputing "next midnight" fresh
-  /// each time never can.
   void _scheduleMidnightRefresh() {
     if (debugDisableMidnightRefresh) return;
     final now = DateTime.now();
     final nextMidnight = DateTime(now.year, now.month, now.day + 1);
-    // A one-second cushion so this fires just after midnight rather than
-    // racing it — firing a moment late is harmless, firing a moment early
-    // would just reload "today" as still-yesterday.
     final delay = nextMidnight.difference(now) + const Duration(seconds: 1);
     _midnightTimer = Timer(delay, _onMidnightTick);
   }
@@ -133,6 +97,14 @@ class _DashboardScreenState extends State<DashboardScreen>
               return _TodayCard(day: snap.data!);
             },
           ),
+          // Dashboard-native "needs attention" card: combines overdue
+          // reminders and low-stock inventory items, both read straight
+          // from their existing tables. Needs no OS notification
+          // permission, no exact-alarm grant, and no OEM battery/
+          // autostart allowance — it just checks current data whenever
+          // this screen is open, which is reliable on every device.
+          const SizedBox(height: 16),
+          const _NeedsAttentionSection(),
           const SizedBox(height: 24),
           Text(AppLocalizations.of(context)!.thisWeek,
               style: Theme.of(context).textTheme.headlineSmall),
@@ -155,6 +127,128 @@ class _DashboardScreenState extends State<DashboardScreen>
           ),
         ],
       ),
+    );
+  }
+}
+
+/// One combined "needs attention" card covering two independent sources:
+/// overdue reminders (Reminders table) and low-stock inventory items
+/// (InventoryItems.lowStockFlag). Both stream from the database directly,
+/// so this works even when phone notifications never fire — as long as
+/// the sacristan opens the app, both show up here.
+class _NeedsAttentionSection extends StatelessWidget {
+  const _NeedsAttentionSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final reminderRepo = context.read<ReminderRepository>();
+    final inventoryRepo = context.read<InventoryRepository>();
+
+    return StreamBuilder<List<Reminder>>(
+      stream: reminderRepo.watchActive(),
+      builder: (context, reminderSnap) {
+        return StreamBuilder<List<InventoryItem>>(
+          stream: inventoryRepo.watchLowStock(),
+          builder: (context, stockSnap) {
+            final now = DateTime.now();
+            final dueReminders = (reminderSnap.data ?? const <Reminder>[])
+                .where((r) => !r.triggerAt.isAfter(now))
+                .toList()
+              ..sort((a, b) => a.triggerAt.compareTo(b.triggerAt));
+            final lowStock = stockSnap.data ?? const <InventoryItem>[];
+
+            if (dueReminders.isEmpty && lowStock.isEmpty) {
+              return const SizedBox.shrink();
+            }
+
+            return Card(
+              color: Theme.of(context).colorScheme.errorContainer,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.priority_high,
+                            color: Theme.of(context).colorScheme.onErrorContainer),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Needs attention (${dueReminders.length + lowStock.length})',
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onErrorContainer,
+                              fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    for (final r in dueReminders)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            Icon(Icons.notifications_active, size: 18,
+                                color: Theme.of(context).colorScheme.onErrorContainer),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    r.title,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: Theme.of(context).colorScheme.onErrorContainer,
+                                    ),
+                                  ),
+                                  if (r.body != null)
+                                    Text(
+                                      r.body!,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onErrorContainer
+                                            .withValues(alpha: 0.85),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () => reminderRepo.cancel(r.id),
+                              child: const Text('Done'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    for (final item in lowStock)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            Icon(Icons.inventory_2_outlined, size: 18,
+                                color: Theme.of(context).colorScheme.onErrorContainer),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '${item.name} — low stock (${item.quantity} left)',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: Theme.of(context).colorScheme.onErrorContainer,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
