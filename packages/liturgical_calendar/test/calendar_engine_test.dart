@@ -544,4 +544,80 @@ void main() {
       expect(archangels.primary.name, contains('Archangels'));
     });
   });
+
+  // Round 16 regression tests: the expansion of `generalRomanCalendarFixed`
+  // from 37 to 150 fixed dates (triggered by a real sacristan reporting
+  // that Oct 1 and Oct 2, 2026 showed as plain green Ordinary Time because
+  // those entries were missing). These tests pin both the new entries
+  // themselves AND the precedence behavior on dates where the new entries
+  // collide with higher-precedence days — a bulk data edit like this one is
+  // exactly the kind of change that can silently disturb the tier system
+  // if an entry's rank or color is typed wrong.
+  group('Round 16 fixed-date expansion', () {
+    for (final year in [2024, 2025, 2026]) {
+      test('$year-10-01 is St. Thérèse of the Child Jesus, white, memorial', () {
+        final day = resolveLiturgicalDay(DateTime(year, 10, 1));
+        expect(day.primary.name, contains('Thérèse'));
+        expect(day.rank, CelebrationRank.memorial);
+        expect(day.color, LiturgicalColor.white);
+      });
+
+      test('$year-10-02 is The Holy Guardian Angels, white, memorial', () {
+        final day = resolveLiturgicalDay(DateTime(year, 10, 2));
+        expect(day.primary.name, contains('Guardian Angels'));
+        expect(day.rank, CelebrationRank.memorial);
+        expect(day.color, LiturgicalColor.white);
+      });
+    }
+
+    test('2026-10-04 (Sunday): 27th Sunday of OT wins, St. Francis of Assisi '
+        'kept as a secondary', () {
+      final day = resolveLiturgicalDay(DateTime(2026, 10, 4));
+      expect(day.primary.name, contains('27th Sunday in Ordinary Time'));
+      expect(day.rank, CelebrationRank.sunday);
+      expect(day.color, LiturgicalColor.green);
+      // the memorial is demoted, never dropped:
+      expect(day.celebrations.any((c) => c.name.contains('Francis')),
+          isTrue);
+    });
+
+    // Easter 2026 falls on April 5, so Ash Wednesday is Feb 18 and Mar 7
+    // is a Lenten weekday. Per the Roman Missal's Table of Liturgical
+    // Days, privileged Lenten weekdays outrank memorials — Ss. Perpetua
+    // and Felicity must therefore NOT take the day, but remain offered.
+    test('2026-03-07 (Lent): Lenten weekday wins, Ss. Perpetua and Felicity '
+        'kept as a secondary', () {
+      final day = resolveLiturgicalDay(DateTime(2026, 3, 7));
+      expect(day.primary.name, contains('Lenten Weekday'));
+      expect(day.rank, CelebrationRank.ferial);
+      expect(day.color, LiturgicalColor.violet);
+      expect(day.celebrations.any((c) => c.name.contains('Perpetua')),
+          isTrue);
+    });
+
+    // Optional memorials never override the ferial default (by design,
+    // calendar_engine.dart's `_tier` ranks them below the generic filler) —
+    // St. Teresa of Calcutta stays available for the priest to choose.
+    test('2026-09-05: ferial weekday primary, St. Teresa of Calcutta offered '
+        'as an optional', () {
+      final day = resolveLiturgicalDay(DateTime(2026, 9, 5));
+      expect(day.primary.name, contains('Week in Ordinary Time'));
+      expect(day.rank, CelebrationRank.ferial);
+      expect(day.color, LiturgicalColor.green);
+      expect(day.celebrations.any((c) => c.name.contains('Calcutta')),
+          isTrue);
+    });
+
+    // Dec 27, 2026 is a Sunday within the Christmas season, so the Feast
+    // of the Holy Family takes precedence over the fixed St. John the
+    // Evangelist entry (see calendar_engine.dart's explicit holyFamily
+    // comparator invariant). St. John must still be present as secondary.
+    test('2026-12-27 (Sunday): Holy Family wins, St. John the Evangelist '
+        'kept as a secondary', () {
+      final day = resolveLiturgicalDay(DateTime(2026, 12, 27));
+      expect(day.primary.name, contains('Holy Family'));
+      expect(day.celebrations.any((c) => c.name.contains('John')),
+          isTrue);
+    });
+  });
 }
