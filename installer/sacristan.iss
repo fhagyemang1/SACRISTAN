@@ -37,7 +37,7 @@
 ; ---------------------------------------------------------------------
 
 #define MyAppName "SACRISTAN"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.1.0"
 #define MyAppPublisher "SACRISTAN"
 #define MyAppExeName "sacristan.exe"
 ; Path is relative to this .iss file's own location (installer\).
